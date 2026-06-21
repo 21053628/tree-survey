@@ -1005,26 +1005,29 @@ function showMapView() {
     document.getElementById('view-project-map').classList.remove('hidden');
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
-    if (_cachedTreeData.length === 0 || !mapObj) {
-        setTimeout(function(){ renderMap(); }, 100);
-    } else {
-        setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
-    }
+    // Always re-render to ensure correct sizing when switching from hidden list view
+    setTimeout(function(){ renderMap(); }, 100);
 }
 
 // ============================================================
 // LIST → MAP SYNC (B1: fixed UUID → Tree ID)
 // ============================================================
-var _pendingFocusTreeId = null;
 function focusTreeOnMap(treeId) {
-    _pendingFocusTreeId = treeId;
     showMapView();
-    // Polling: 等 map render 完成後 marker 會出現
+    // Polling: 等 map render 完成 + marker 出現
     _focusTreeOnMapNow(treeId, 0);
 }
 function _focusTreeOnMapNow(treeId, retryCount) {
     retryCount = retryCount || 0;
-    if (!mapObj) return;
+    // Also poll when mapObj is still null (map not yet initialized)
+    if (!mapObj) {
+        if (retryCount < 80) {
+            setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        } else {
+            toast('⚠️ 地圖初始化逾時', 'warning');
+        }
+        return;
+    }
     var marker = markerLookup[treeId];
     if (!marker) {
         // Polling: 每 150ms 再試，最多等 10 秒（讓 _doRenderMapFromDB 有充足時間 fetch）
@@ -1035,12 +1038,12 @@ function _focusTreeOnMapNow(treeId, retryCount) {
             var tree = _cachedTreeData.find(function(t){ return t.id === treeId; });
             if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
             else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
-            _pendingFocusTreeId = null;
         }
         return;
     }
     // Marker found — highlight & popup
-    _pendingFocusTreeId = null;
+    var treeData = _cachedTreeData.find(function(t){ return t.id === treeId; });
+    if (treeData && treeData.healthCondition && _hiddenHealth[treeData.healthCondition]) { toggleHealthFilter(treeData.healthCondition, null); }
     mapObj.setView(marker.getLatLng(), Math.max(mapObj.getZoom(), 18));
     marker.openPopup();
     var tooltip = marker.getTooltip();
