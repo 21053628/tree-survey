@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>🌳 樹木調查 Supabase v19.5</title>
+    <title>🌳 樹木調查 Supabase v20</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           onerror="this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'">
     <script>
@@ -159,6 +159,10 @@
         .filter-toggle.dead{color:#9ca3af}.filter-toggle.dead.on{background:rgba(107,114,128,.15);border-color:rgba(107,114,128,.3)}
         .filter-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
         .filter-dot.good{background:#10b981}.filter-dot.fair{background:#f59e0b}.filter-dot.poor{background:#ef4444}.filter-dot.dead{background:#6b7280}
+        .layer-toggles{display:flex;gap:4px;flex-wrap:wrap}
+        .layer-toggle{padding:5px 10px;border-radius:14px;font-size:.68rem;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:4px;min-height:32px;white-space:nowrap;color:#94a3b8;background:transparent}
+        .layer-toggle.active{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.3);color:#c084fc}
+        .layer-toggle:hover:not(.active){background:rgba(255,255,255,.04);color:#cbd5e1}
         #mapContainer{width:100%;height:500px;background:#1a1a2e;z-index:1}
         .map-legend{background:var(--surface2);padding:6px 14px;display:flex;gap:12px;flex-wrap:wrap;font-size:.68rem;color:var(--text2);border-top:1px solid var(--border);align-items:center}
         .map-legend span{display:flex;align-items:center;gap:4px}
@@ -232,6 +236,7 @@
             .map-top-bar{gap:6px;padding:8px 10px}
             .map-top-bar .map-search{min-width:100px}
             .filter-toggle{padding:4px 7px;font-size:.64rem}
+            .layer-toggle{padding:4px 7px;font-size:.64rem}
         }
         @media(max-width:480px){
             .header-logo{font-size:.9rem}
@@ -254,6 +259,7 @@
             .map-legend{gap:6px;font-size:.62rem}
             .map-top-bar{gap:4px}
             .filter-toggle{padding:3px 6px;font-size:.6rem}
+            .layer-toggle{padding:3px 6px;font-size:.6rem}
             .map-top-bar .map-search{min-width:80px}
         }
         ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
@@ -350,6 +356,12 @@
                         <button class="filter-toggle poor on" onclick="toggleHealthFilter('Poor',this)"><span class="filter-dot poor"></span>Poor</button>
                         <button class="filter-toggle dead on" onclick="toggleHealthFilter('Dead',this)"><span class="filter-dot dead"></span>Dead</button>
                     </div>
+                    <div class="layer-toggles" id="layerToggles">
+                        <button class="layer-toggle active" data-layer="dark" onclick="switchMainLayer('dark')">🌙 Dark</button>
+                        <button class="layer-toggle" data-layer="imagery" onclick="switchMainLayer('imagery')">🛰️ 衛星</button>
+                        <button class="layer-toggle" data-layer="topo" onclick="switchMainLayer('topo')">🗺️ 地形</button>
+                        <button class="layer-toggle" data-layer="street" onclick="switchMainLayer('street')">🏙️ 街道</button>
+                    </div>
                     <button class="btn btn-outline btn-xs" onclick="locateMe()" title="定位自己">📍 我</button>
                 </div>
                 <div id="mapContainer"></div>
@@ -409,6 +421,12 @@
 <div class="modal-overlay z-top hidden" id="mapPickerModal">
     <div class="modal" style="max-width:90vw;width:700px">
         <h3>🗺️ 地圖揀位 — Click 地圖放標記</h3>
+        <div class="layer-toggles flex gap-2" style="margin-bottom:10px" id="pickerLayerToggles">
+            <button class="layer-toggle active" data-layer="dark" onclick="switchPickerLayer('dark')">🌙 Dark</button>
+            <button class="layer-toggle" data-layer="imagery" onclick="switchPickerLayer('imagery')">🛰️ 衛星</button>
+            <button class="layer-toggle" data-layer="topo" onclick="switchPickerLayer('topo')">🗺️ 地形</button>
+            <button class="layer-toggle" data-layer="street" onclick="switchPickerLayer('street')">🏙️ 街道</button>
+        </div>
         <div class="map-picker-hint">👇 Click 地圖上棵樹嘅位置，然後撳「✅ 用呢個位置」</div>
         <div class="map-picker-container" id="mapPickerContainer"></div>
         <div style="font-size:.78rem;color:var(--text2);margin-top:6px;text-align:center" id="mapPickerCoords">Click 地圖揀位置...</div>
@@ -498,6 +516,12 @@
 var SUPABASE_URL = 'https://qdwccjempkczvgewiepi.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkd2NjamVtcGtjenZnZXdpZXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI4NTMsImV4cCI6MjA5NzQ0ODg1M30.XoAly_tar_hUuNTXMJ0t4qkXst08JKzF9VQcs-Ov960';
 var HK_CENTER = [22.35, 114.15];
+var LAYER_CONFIG = {
+    dark:   { name: '🌙 Dark',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',              options: { attribution: '&copy; <a href="https://carto.com/">CARTO</a>', maxZoom: 19 } },
+    imagery:{ name: '🛰️ 衛星',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', options: { attribution: '&copy; Esri, Maxar, Earthstar Geographics', maxZoom: 19 } },
+    topo:   { name: '🗺️ 地形',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',  options: { attribution: '&copy; Esri', maxZoom: 19 } },
+    street: { name: '🏙️ 街道',   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                          options: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>', maxZoom: 19 } }
+};
 
 // ============================================================
 // STATE
@@ -532,6 +556,8 @@ var _suggestReady = false;
 var _pendingFocusTreeId = null;
 var _focusResolved = false;
 var _focusInProgress = false;
+var _currentLayer = 'dark';
+var _pickerCurrentLayer = 'dark';
 
 // ============================================================
 // UUID FALLBACK (B8: crypto.randomUUID needs HTTPS)
@@ -727,9 +753,9 @@ function _initMapPicker() {
     if (_pickerMap) { _pickerMap.remove(); _pickerMap = null; }
     _pickerMarker = null;
     _pickerMap = L.map('mapPickerContainer', { zoomControl: true, attributionControl: false }).setView(HK_CENTER, 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 19
-    }).addTo(_pickerMap);
+    var pLayerCfg = LAYER_CONFIG[_pickerCurrentLayer] || LAYER_CONFIG['dark'];
+    _pickerMap._currentTileLayer = L.tileLayer(pLayerCfg.url, pLayerCfg.options).addTo(_pickerMap);
+    document.querySelectorAll('#mapPickerModal .layer-toggle').forEach(function(b){ b.classList.toggle('active', b.dataset.layer === _pickerCurrentLayer); });
     var existingLat = parseFloat(document.getElementById('tree_latitude').value);
     var existingLng = parseFloat(document.getElementById('tree_longitude').value);
     if (!isNaN(existingLat) && !isNaN(existingLng)) {
@@ -765,6 +791,23 @@ function closeMapPicker() {
     if (_pickerMap) { _pickerMap.remove(); _pickerMap = null; }
     _pickerMarker = null;
     document.getElementById('mapPickerModal').classList.add('hidden');
+}
+
+function switchMainLayer(key) {
+    if (!mapObj || !LAYER_CONFIG[key]) return;
+    _currentLayer = key;
+    var cfg = LAYER_CONFIG[key];
+    if (mapObj._currentTileLayer) mapObj.removeLayer(mapObj._currentTileLayer);
+    mapObj._currentTileLayer = L.tileLayer(cfg.url, cfg.options).addTo(mapObj);
+    document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b){ b.classList.toggle('active', b.dataset.layer === key); });
+}
+function switchPickerLayer(key) {
+    if (!_pickerMap || !LAYER_CONFIG[key]) return;
+    _pickerCurrentLayer = key;
+    var cfg = LAYER_CONFIG[key];
+    if (_pickerMap._currentTileLayer) _pickerMap.removeLayer(_pickerMap._currentTileLayer);
+    _pickerMap._currentTileLayer = L.tileLayer(cfg.url, cfg.options).addTo(_pickerMap);
+    document.querySelectorAll('#mapPickerModal .layer-toggle').forEach(function(b){ b.classList.toggle('active', b.dataset.layer === key); });
 }
 
 // ============================================================
@@ -1027,7 +1070,6 @@ function focusTreeOnMap(treeId) {
     if (_focusInProgress) { _focusInProgress = false; }
     _focusInProgress = true;
     _focusResolved = false;
-    _cachedTreeData = [];
     if (mapObj) { destroyMap(); }
     
     _pendingFocusTreeId = treeId;
@@ -1068,7 +1110,7 @@ function _focusTreeOnMapNow(treeId, retryCount) {
         }
         return;
     }
-    _focusResolved = true; _focusInProgress = false;
+    _focusResolved = true; _focusInProgress = false; _pendingFocusTreeId = null;
     applyMapFilters();
 }
 
@@ -1140,10 +1182,9 @@ function _doRenderMap(trees) {
     var container = document.getElementById('mapContainer'); if (!container) return;
     destroyMap();
     mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" style="color:#64748b">OSM</a> &copy; <a href="https://carto.com/" style="color:#64748b">CARTO</a>',
-        subdomains: 'abcd', maxZoom: 19
-    }).addTo(mapObj);
+    var layerCfg = LAYER_CONFIG[_currentLayer] || LAYER_CONFIG['dark'];
+    mapObj._currentTileLayer = L.tileLayer(layerCfg.url, layerCfg.options).addTo(mapObj);
+    document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b){ b.classList.toggle('active', b.dataset.layer === _currentLayer); });
     var withCoords = trees.filter(function(t) { return t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude)); });
     document.getElementById('sProjectMappedCount').textContent = withCoords.length;
     if (withCoords.length === 0) { mapObj.setView(HK_CENTER, 14); document.getElementById('mapStatus').textContent = '冇樹有座標'; return; }
@@ -1399,7 +1440,8 @@ function confirmDeleteTree(id,name) {
 // ============================================================
 // DELETE
 // ============================================================
-document.getElementById('confirmBtn').addEventListener('click',async function(){
+var confirmBtnEl = document.getElementById('confirmBtn');
+if (confirmBtnEl) confirmBtnEl.addEventListener('click',async function(){
     if (!pendingDelete||!supabase) return;
     try {
         if (pendingDelete.type==='project') { await supabase.from('trees').delete().eq('projectId',pendingDelete.id); await supabase.from('projects').delete().eq('id',pendingDelete.id); }
@@ -1413,7 +1455,20 @@ document.getElementById('confirmBtn').addEventListener('click',async function(){
 });
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); if (id==='confirmModal') pendingDelete=null; }
 document.addEventListener('click',function(e){ if(e.target.classList.contains('modal-overlay')) e.target.classList.add('hidden'); });
-document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.add('hidden'); }); pendingDelete=null; } });
+document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){
+        var modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+        if (modals.length > 0) {
+            var topZ = 0, topModal = null;
+            modals.forEach(function(m){
+                var z = parseInt(window.getComputedStyle(m).zIndex) || 0;
+                if (z >= topZ) { topZ = z; topModal = m; }
+            });
+            if (topModal) topModal.classList.add('hidden');
+        }
+        if (!document.querySelector('.modal-overlay:not(.hidden)')) pendingDelete = null;
+    }
+});
 
 async function refreshAll() {
     if (!supabase) { initSupabase(); if (!supabase) return; }
@@ -1428,7 +1483,7 @@ async function refreshAll() {
 // ============================================================
 async function diagnosis() {
     var L=[]; function log(m){L.push(m);console.log('[DIAG]',m);}
-    log('═══ v19.5 診斷 ═══');
+    log('═══ v20 診斷 ═══');
     log('SDK: '+(sdkReady()?'✅':'❌')); log('XLSX: '+(xlsxReady()?'✅':'❌')); log('Leaflet: '+(leafletReady()?'✅':'❌'));
     log('Species: Bot '+botanicalNames.length+' | Chi '+chineseNames.length);
     log('Protocol: ' + window.location.protocol + ' | Host: ' + window.location.hostname);
@@ -1459,7 +1514,7 @@ window.addEventListener('resize', function() {
 // ============================================================
 // BOOT
 // ============================================================
-console.log('🚀 v19.5 Boot (Bug-fix release)...');
+console.log('🚀 v20 Boot...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true,'CDN 載入中...');
 var _pollCount=0;
