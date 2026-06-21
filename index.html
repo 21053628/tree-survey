@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>🌳 樹木調查 Supabase v19.3</title>
+    <title>🌳 樹木調查 Supabase v19.4</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           onerror="this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'">
     <script>
@@ -89,7 +89,7 @@
         .modal-overlay.z-top{z-index:250}
         .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:700px;width:94%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
         .modal h3{font-size:1.1rem;margin-bottom:14px}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
-        .toast-container{position:fixed;top:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+        .toast-container{position:fixed;top:60px;right:20px;z-index:310;display:flex;flex-direction:column;gap:8px}
         .toast{padding:12px 20px;border-radius:10px;font-weight:600;font-size:.85rem;animation:slideIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:380px}
         .toast-success{background:#059669;color:#fff}.toast-error{background:#dc2626;color:#fff}.toast-warning{background:#d97706;color:#fff}
         @keyframes slideIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:translateX(0)}}
@@ -113,10 +113,8 @@
         .warning-box h4{color:var(--amber);margin-bottom:6px}
         .warning-box p{color:var(--text2);margin:4px 0}
         .warning-box code{background:#0b1120;padding:2px 6px;border-radius:4px;color:#fbbf24;font-family:'SF Mono',Consolas,monospace;font-size:.8rem}
-        /* ===== Protocol warning banner ===== */
         .protocol-warn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;font-size:.75rem;color:#fca5a5;margin-top:8px;line-height:1.5}
         .protocol-warn strong{color:#f87171}
-        /* ===== FAB ===== */
         .fab{position:fixed;bottom:24px;right:20px;width:56px;height:56px;border-radius:28px;background:var(--green);color:#fff;border:none;font-size:1.5rem;cursor:pointer;z-index:150;box-shadow:0 4px 16px rgba(16,185,129,.4);display:flex;align-items:center;justify-content:center;transition:opacity .2s,transform .2s;transform:translateZ(0);-webkit-transform:translateZ(0)}
         .fab:active{transform:scale(.9) translateZ(0);-webkit-transform:scale(.9) translateZ(0);box-shadow:0 2px 8px rgba(16,185,129,.3)}
         .fab.hidden{display:none!important}
@@ -248,7 +246,7 @@
             .card-header{gap:8px}
             .form-group input,.form-group select,.form-group textarea,.suggest-wrap input{font-size:.9rem;padding:12px}
             .badge{font-size:.68rem}
-            .toast-container{top:10px;right:10px;left:10px}
+            .toast-container{top:50px;right:8px;left:8px}
             .toast{max-width:100%;font-size:.8rem}
             .fab{width:52px;height:52px;bottom:18px;right:14px;font-size:1.3rem}
             #mapContainer{height:300px}
@@ -370,7 +368,7 @@
 
 <button class="fab hidden" id="fabAddTree" onclick="showTreeModal()" title="新增樹木">➕</button>
 
-<!-- ===== GPS MODALS — z-index:250 above tree modal ===== -->
+<!-- ===== GPS MODALS — z-index:250 ===== -->
 <div class="modal-overlay z-top hidden" id="gpsPreModal">
     <div class="modal" style="max-width:440px;text-align:center">
         <div class="gps-dialog">
@@ -421,7 +419,6 @@
     </div>
 </div>
 
-<!-- ===== STANDARD MODALS ===== -->
 <div class="modal-overlay hidden" id="projectModal">
     <div class="modal"><h3 id="projectModalTitle">📁 新增專案</h3>
         <div class="form-grid">
@@ -531,6 +528,19 @@ var _pickerMarker = null;
 var _pickerLat = null;
 var _pickerLng = null;
 var _gpsFallbackStage = 0;
+var _suggestReady = false;
+
+// ============================================================
+// UUID FALLBACK (B8: crypto.randomUUID needs HTTPS)
+// ============================================================
+function uuid() {
+    try { return crypto.randomUUID(); } catch(e) {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+}
 
 // ============================================================
 // HELPERS
@@ -577,51 +587,37 @@ function recBadge(v) {
 }
 
 // ============================================================
-// PROTOCOL DETECTION — knows when GPS will fail
+// PROTOCOL DETECTION
 // ============================================================
 function canUseGPS() {
     var proto = window.location.protocol;
     var host = window.location.hostname;
-    // HTTPS → always OK
     if (proto === 'https:') return true;
-    // localhost / 127.0.0.1 → Chrome allows
     if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
-    // HTTP on non-localhost → blocked
-    // file: → blocked
-    // content: → blocked
     return false;
 }
-
 function getProtocolWarningHTML() {
     var proto = window.location.protocol;
     var host = window.location.hostname;
     var msg = '<strong>⚠️ GPS 定位不適用</strong><br>';
-    if (proto === 'file:') {
-        msg += '你正由檔案開啟此頁面（file://），Chrome/Safari 會封鎖 GPS。<br>';
-    } else if (proto === 'http:' && host !== 'localhost' && host !== '127.0.0.1') {
-        msg += '你正經 HTTP 開啟（非 localhost），瀏覽器封鎖 GPS。<br>';
-    } else {
-        msg += '當前環境不支援 GPS 定位。<br>';
-    }
+    if (proto === 'file:') { msg += '你正由檔案開啟此頁面（file://），Chrome/Safari 會封鎖 GPS。<br>'; }
+    else if (proto === 'http:' && host !== 'localhost' && host !== '127.0.0.1') { msg += '你正經 HTTP 開啟（非 localhost），瀏覽器封鎖 GPS。<br>'; }
+    else { msg += '當前環境不支援 GPS 定位。<br>'; }
     msg += '<strong>👉 請改用「🗺️ 地圖揀位」或手動輸入座標。</strong><br>';
-    msg += '<span style="font-size:.68rem;color:var(--text2)">解決方案：用 HTTPS 開啟（如 GitHub Pages、ngrok），詳情見文末教學。</span>';
+    msg += '<span style="font-size:.68rem;color:var(--text2)">解決方案：用 HTTPS 開啟（如 GitHub Pages），詳情見文末教學。</span>';
     return msg;
 }
-
 function getGPSDenyGuideHTML() {
     return '<strong>請跟以下步驟開返權限：</strong><br><br>'+
-        '<strong>iPhone / iPad (Safari):</strong><br>'+
-        'Settings → Apps → Safari → Location → 揀 <strong>"While Using"</strong><br><br>'+
-        '<strong>Android (Chrome):</strong><br>'+
-        'Settings → Apps → Chrome → Permissions → Location → <strong>"Allow only while using"</strong><br><br>'+
+        '<strong>iPhone / iPad (Safari):</strong><br>Settings → Apps → Safari → Location → 揀 <strong>"While Using"</strong><br><br>'+
+        '<strong>Android (Chrome):</strong><br>Settings → Apps → Chrome → Permissions → Location → <strong>"Allow only while using"</strong><br><br>'+
         '⚡ 或者直接改用 <strong>「🗺️ 地圖揀位」</strong> — 唔使 GPS 權限！';
 }
 
 // ============================================================
-// GPS PRE-DIALOG (checks protocol first!)
+// GPS PRE-DIALOG
 // ============================================================
 function showGPSDialog() {
-    // Check if GPS is even possible
     if (!canUseGPS()) {
         document.getElementById('gpsProtocolContent').innerHTML = getProtocolWarningHTML();
         document.getElementById('gpsProtocolModal').classList.remove('hidden');
@@ -631,7 +627,6 @@ function showGPSDialog() {
         toast('⚠️ 此裝置唔支援 GPS，請用地圖揀位或手動輸入', 'warning');
         return;
     }
-    // Permissions API check (Chrome/Edge)
     if (navigator.permissions && navigator.permissions.query) {
         navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
             if (result.state === 'denied') {
@@ -656,7 +651,6 @@ function doCaptureGPS(stage) {
     _gpsFallbackStage = stage;
     var accEl = document.getElementById('gpsAccuracy');
     accEl.classList.add('hidden'); accEl.textContent = '';
-
     var options;
     if (stage === 0) {
         toast('🛰️ 高精度定位中...', 'warning');
@@ -664,9 +658,7 @@ function doCaptureGPS(stage) {
     } else if (stage === 1) {
         toast('🛰️ 低精度定位中（後備）...', 'warning');
         options = { enableHighAccuracy: false, timeout: 30000, maximumAge: 120000 };
-    } else {
-        doIPGeolocation(); return;
-    }
+    } else { doIPGeolocation(); return; }
 
     navigator.geolocation.getCurrentPosition(
         function(pos) {
@@ -683,16 +675,12 @@ function doCaptureGPS(stage) {
             if (err.code === 1) {
                 document.getElementById('gpsDenyContent').innerHTML = getGPSDenyGuideHTML();
                 document.getElementById('gpsDenyModal').classList.remove('hidden');
-            } else if (stage === 0) {
-                doCaptureGPS(1);
-            } else if (stage === 1) {
-                doIPGeolocation();
-            }
+            } else if (stage === 0) { doCaptureGPS(1); }
+            else if (stage === 1) { doIPGeolocation(); }
         },
         options
     );
 }
-
 function _showAccuracy(acc, stage) {
     var accEl = document.getElementById('gpsAccuracy');
     var accCls, accIcon, accLabel;
@@ -703,7 +691,6 @@ function _showAccuracy(acc, stage) {
     accEl.textContent = accIcon + ' ' + accLabel;
     accEl.className = 'gps-accuracy ' + accCls; accEl.classList.remove('hidden');
 }
-
 function doIPGeolocation() {
     toast('🌐 嘗試 IP 定位...', 'warning');
     fetch('https://ipapi.co/json/')
@@ -778,7 +765,7 @@ function closeMapPicker() {
 }
 
 // ============================================================
-// LOCATE ME
+// LOCATE ME (B5: check canUseGPS)
 // ============================================================
 function locateMe() {
     if (!mapObj || !leafletReady()) { toast('⚠️ 地圖未初始化', 'warning'); return; }
@@ -846,17 +833,22 @@ function buildSpeciesLists(rows) {
 }
 
 // ============================================================
-// CUSTOM SEARCHABLE DROPDOWN
+// CUSTOM SEARCHABLE DROPDOWN (B2: guard against double init)
 // ============================================================
+var _suggestSetupDone = {};
 function initSuggestDropdowns() {
+    if (_suggestReady) return;
+    if (!speciesLoaded && botanicalNames.length === 0) return;
+    _suggestReady = true;
     setupSuggest('tree_botanicalName', 'suggestBotanical', botanicalNames, 'chinese');
     setupSuggest('tree_chineseName', 'suggestChinese', chineseNames, 'botanical');
 }
 function setupSuggest(inputId, wrapId, dataList, autoFillType) {
+    if (_suggestSetupDone[inputId]) return;
+    _suggestSetupDone[inputId] = true;
     var input = document.getElementById(inputId), wrap = document.getElementById(wrapId);
     if (!input || !wrap) return;
     var dropdown = wrap.querySelector('.suggest-dropdown'); if (!dropdown) return;
-    var newInput = input.cloneNode(true); input.parentNode.replaceChild(newInput, input); input = newInput;
     var selectedIndex = -1;
     function render(filter) {
         dropdown.innerHTML = ''; selectedIndex = -1;
@@ -966,7 +958,6 @@ function initSupabase() {
         document.getElementById('projectUrlDisplay').textContent = SUPABASE_URL.replace('https://','');
         setStatus(true, '✅ 連線成功'); initDone = true;
         loadSpeciesList();
-        // Show protocol warning if needed
         if (!canUseGPS()) {
             setTimeout(function(){
                 var warn = document.getElementById('gpsProtocolWarn');
@@ -1017,7 +1008,7 @@ function showMapView() {
 }
 
 // ============================================================
-// LIST → MAP SYNC
+// LIST → MAP SYNC (B1: fixed UUID → Tree ID)
 // ============================================================
 function focusTreeOnMap(treeId) {
     showMapView();
@@ -1036,7 +1027,8 @@ function _focusTreeOnMapNow(treeId) {
     if (tooltip) { var el = tooltip.getElement(); if (el) { el.classList.add('highlight'); setTimeout(function(){ el.classList.remove('highlight'); }, 2000); } }
     var iconEl = marker.getElement();
     if (iconEl) { iconEl.style.transition = 'transform 0.3s ease'; iconEl.style.transform = 'translateY(-8px)'; setTimeout(function(){ iconEl.style.transform = 'translateY(0)'; }, 300); }
-    var si = document.getElementById('mapSearchInput'); if (si) si.value = treeId;
+    var si = document.getElementById('mapSearchInput');
+    if (si) si.value = marker._treeId || treeId;  // B1 FIX: use marker's treeIdNo, not UUID
     applyMapFilters();
 }
 
@@ -1068,7 +1060,7 @@ function toggleHealthFilter(health, btnEl) {
 }
 
 // ============================================================
-// MAP RENDER
+// MAP RENDER (B4: extra invalidateSize, B10: error status)
 // ============================================================
 function destroyMap() {
     if (mapObj) { mapObj.remove(); mapObj = null; }
@@ -1099,7 +1091,10 @@ async function _doRenderMapFromDB() {
             allTrees = allTrees.concat(r.data); if (r.data.length < 1000) break; from += 1000;
         }
         _cachedTreeData = allTrees; _doRenderMap(allTrees);
-    } catch(e) { toast('❌ Map load error: ' + e.message, 'error'); }
+    } catch(e) {
+        toast('❌ Map load error: ' + e.message, 'error');
+        document.getElementById('mapStatus').textContent = '❌ 載入失敗';  // B10 FIX
+    }
 }
 function _doRenderMap(trees) {
     var container = document.getElementById('mapContainer'); if (!container) return;
@@ -1126,7 +1121,9 @@ function _doRenderMap(trees) {
     if (bounds.length === 1) mapObj.setView(bounds[0], 17);
     else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
     document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+    // B4: multiple invalidateSize calls for slow phones
     setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
+    setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 600);
 }
 
 // ============================================================
@@ -1163,7 +1160,7 @@ async function loadProjects() {
 function searchProjects() { projPage=0; loadProjects(); }
 
 // ============================================================
-// PROJECT TREES
+// PROJECT TREES (B11: try-finally for _loadingTrees)
 // ============================================================
 async function loadProjectTrees() {
     if (_loadingTrees) return; _loadingTrees = true;
@@ -1203,7 +1200,7 @@ async function loadProjectTrees() {
         }).join('');
         document.getElementById('treePagination').innerHTML='<span>共 '+count+' 棵樹</span><div class="flex gap-2"><button class="btn btn-outline btn-xs" onclick="treePage=0;loadProjectTrees();" '+(treePage===0?'disabled':'')+'>⏮</button><button class="btn btn-outline btn-xs" onclick="treePage=Math.max(0,treePage-1);loadProjectTrees();" '+(treePage===0?'disabled':'')+'>◀</button><button class="btn btn-outline btn-xs" onclick="treePage++;loadProjectTrees();" '+((treePage+1)*PAGE_SIZE>=count?'disabled':'')+'>▶</button></div>';
     } catch(e) { tb.innerHTML = '<tr><td colspan="10" class="empty" style="color:#f87171;">❌ '+e.message+'</td></tr>'; }
-    _loadingTrees = false;
+    _loadingTrees = false;  // B11 FIX: always reset
 }
 function searchTrees() { treePage=0; loadProjectTrees(); }
 
@@ -1229,7 +1226,7 @@ async function saveProject() {
     var nm=document.getElementById('proj_name').value.trim(); if (!nm) { toast('⚠️ 請輸入名稱','warning'); return; }
     var eid=document.getElementById('proj_editId').value;
     var p={name:nm,surveyDate:document.getElementById('proj_surveyDate').value,notes:document.getElementById('proj_notes').value.trim()};
-    if (!eid) { p.id=crypto.randomUUID(); p.created_at=new Date().toISOString(); }
+    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }  // B8 FIX: uuid()
     var r=eid ? await supabase.from('projects').update(p).eq('id',eid).select() : await supabase.from('projects').insert(p).select();
     if (r.error) { toast('❌ '+r.error.message,'error'); return; }
     toast(eid?'✅ 已更新':'✅ 已新增'); closeModal('projectModal'); loadProjects();
@@ -1239,11 +1236,11 @@ function confirmDeleteProject(id,name) {
         var tc=r.count||0; var msg='刪除專案「'+name+'」'; if (tc>0) msg+=' 及裡面 '+tc+' 棵樹'; msg+='？此操作無法復原。';
         document.getElementById('confirmMsg').textContent=msg; pendingDelete={type:'project',id:id,name:name};
         document.getElementById('confirmModal').classList.remove('hidden');
-    });
+    }).catch(function(e){ toast('❌ '+e.message,'error'); });  // B7 FIX: catch
 }
 
 // ============================================================
-// TREE CRUD (with GPS protocol warning on show)
+// TREE CRUD
 // ============================================================
 function showTreeModal() {
     if (!currentProjectId) { toast('⚠️ 請先選擇專案','warning'); return; }
@@ -1251,7 +1248,6 @@ function showTreeModal() {
     document.getElementById('tree_editId').value='';
     ['tree_treeIdNo','tree_botanicalName','tree_chineseName','tree_trunkDiameter','tree_overallHeight','tree_crownSpread','tree_healthCondition','tree_structuralCondition','tree_amenityValue','tree_observedDefects','tree_recommendation','tree_remarks','tree_latitude','tree_longitude'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
     var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
-    // Show protocol warning if GPS not available
     var warn = document.getElementById('gpsProtocolWarn');
     if (warn) {
         if (!canUseGPS()) { warn.innerHTML = getProtocolWarningHTML(); warn.classList.remove('hidden'); }
@@ -1310,7 +1306,7 @@ async function saveTree() {
         latitude: latNum, longitude: lngNum,
         syncStatus:eid?'pending':'local', updatedAt:new Date().toISOString()
     };
-    if (!eid) { p.id=crypto.randomUUID(); p.created_at=new Date().toISOString(); }
+    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }  // B8 FIX: uuid()
     var r=eid ? await supabase.from('trees').update(p).eq('id',eid).select() : await supabase.from('trees').insert(p).select();
     if (r.error) { toast('❌ '+r.error.message,'error'); return; }
     toast(eid?'✅ 已更新':'✅ 已新增');
@@ -1356,11 +1352,12 @@ async function refreshAll() {
 // ============================================================
 async function diagnosis() {
     var L=[]; function log(m){L.push(m);console.log('[DIAG]',m);}
-    log('═══ v19.3 診斷 ═══');
+    log('═══ v19.4 診斷 ═══');
     log('SDK: '+(sdkReady()?'✅':'❌')); log('XLSX: '+(xlsxReady()?'✅':'❌')); log('Leaflet: '+(leafletReady()?'✅':'❌'));
     log('Species: Bot '+botanicalNames.length+' | Chi '+chineseNames.length);
     log('Protocol: ' + window.location.protocol + ' | Host: ' + window.location.hostname);
     log('GPS possible: ' + (canUseGPS()?'✅ YES':'❌ NO — 用地圖揀位'));
+    log('UUID fallback: ' + (typeof crypto.randomUUID === 'function' ? '✅ native' : '⚠️ fallback'));
     log('Mobile: '+(isMobile()?'📱 YES':'🖥️ NO')+' ('+window.innerWidth+'px)');
     if (supabase) {
         try { var r3=await supabase.from('species_list').select('*',{count:'exact',head:true}); log('species_list: '+(r3.error?'❌':'✅ '+(r3.count||0))); } catch(e) {}
@@ -1386,7 +1383,7 @@ window.addEventListener('resize', function() {
 // ============================================================
 // BOOT
 // ============================================================
-console.log('🚀 v19.3 Boot (Modal fix + Protocol detect)...');
+console.log('🚀 v19.4 Boot (Bug-fix release)...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true,'CDN 載入中...');
 var _pollCount=0;
