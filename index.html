@@ -1022,10 +1022,11 @@ function focusTreeOnMap(treeId) {
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
     
-    // Only render if map not initialized or no cached data
-    if (!mapObj || _cachedTreeData.length === 0) {
-        setTimeout(function(){ renderMap(); }, 100);
-    }
+    // 強制清理舊地圖及 cache，防止 race condition：舊 mapObj popup 被新 renderMap() -> destroyMap() 銷毀
+    _cachedTreeData = [];
+    if (mapObj) { destroyMap(); }
+    
+    setTimeout(function(){ renderMap(); }, 100);
     
     // Polling: 等 map render 完成 + marker 出現
     _focusTreeOnMapNow(treeId, 0);
