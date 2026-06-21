@@ -1,53 +1,47 @@
-# 🌳 樹木調查工具 Tree Survey Tool (v20)
+# 🌳 樹木調查系統 Tree Survey Tool (v20 旗艦相片版)
 
-這是一款專為前線樹藝師、攀樹師及樹木調查員設計的高效、輕量、深色主題（Dark Mode）無伺服器架構網頁應用程式。本專案採用高度整合的單一檔案架構，核心基於 `initial_form V20 new map.html` 開發，結合 **Supabase 雲端資料庫**，實現流暢的專案庫存管理、智慧樹種聯想輸入、四階式漸進 GPS 座標擷取，以及強大的互動式多底圖視覺化分析功能。
+這是一款專為前線樹藝師、植物學家、樹木風險評估員及景觀工程師設計的高效、輕量、深色主題（Dark Mode）無伺服器架構（Serverless）核心網頁應用程式。本專案採用高度整合的單一檔案（Single-file Application）架構，核心基於 `initial_form V20 new map.html` 開發，結合 **Supabase 雲端資料庫與存儲桶（Storage）**，實現了前線數據採集、多媒體照片記錄、智慧樹種補完、四階式漸進定位以及互動式 GIS 地圖分析的一體化工作流。
 
 本專案由 **Terry Cheung** 開發設計。
 
 ---
 
-## 🚀 v20 全新升級亮點
+## 🚀 v20 重大功能升級亮點
 
-* 🔮 **動態多底圖切換系統 (Multi-Layer Basemaps)**：
-  全新引入 `LAYER_CONFIG` 圖層管理架構。不論是在**主專案地圖檢視**或**彈出式「地圖揀位」視窗**中，前線人員皆可一鍵無縫切換四種專業地圖：
-  * 🌙 **Dark 模式**：採用 CARTO 高對比深色地圖，適合戶外高強光下突顯健康狀況標記。
-  * 🛰️ **衛星模式**：採用 Esri 高解析度世界航照影像，協助精確比對樹冠（Crown Spread）與現場實際地物。
-  * 🗺️ **地形模式**：採用 Esri 世界地形等高線圖，方便評估樹木生長的坡度與微地形環境。
-  * 🏙️ **街道模式**：採用 OpenStreetMap 街道圖，提供前線定位所需的詳細路名與都市基礎設施資訊。
-* ⚡ **地圖同步效能優化 (Map Sync Optimizations)**：
-  重構了「列表 ➔ 地圖」的導航邏輯，引入全新的連鎖狀態旗標群（`_focusInProgress` 與 `_focusResolved`），徹底解決舊版本在慢速流動裝置上因非同步載入地圖、DOM 未渲染完成所導致的 Popup 彈出動畫衝突與視角飄移（Race Condition）問題。
+### 1. 📸 雲端多媒體相片管理架構 (Photo Upload & Media Framework)
+新版本打破了過往單純的文字與數字框架，全面引入了完整的影像資產管理模組，解決了前線評估樹木缺陷（Observed Defects）時最核心的影像留檔需求：
+* **🍏 iOS HEIC 原生兼容性**：整合 `heic2any` 解碼器，前線人員使用 iPhone/iPad 現地拍照上傳（`.heic` / `.heif` 格式）時，系統會在流動端自動在背景實時轉碼為通用高壓縮率的 `.jpg`，防止上傳失敗。
+* **📐 前端雙階畫布壓縮 (Canvas-based Resizing)**：內建非同步影像縮放演算法。相片上傳前，瀏覽器會使用 Canvas 自動生成兩種規格：一組為 `1920px` 高清存檔（品質 0.8），另一組為 `300px` 的輕量縮圖，大幅優化山區弱網環境下的上傳速度，同時極致節省雲端存儲空間。
+* **🗺️ 地圖快顯相片條 (Popup Photo Strip)**：Leaflet 地圖上的氣泡彈窗（Popup）全面動態化。點擊任何標記時，系統會從遠端非同步載入該樹木最新的 5 張現場照片，並以優雅的預覽條（Photo Strip）呈現，點擊即可直達相片檢視器。
+* **🖼️ 旗艦級相片檢視與編輯器 (Media Viewer Matrix)**：內建全功能互動視窗（Modal），支援多圖滑動輪播（Prev/Next）、自訂相片詳細備註（Caption）、拍攝日期微調（Taken At 變更）、一鍵獨立高清下載，以及同步刪除遠端 Storage 與資料庫關聯。
 
----
+### 2. 🗺️ 多源專業 GIS 底圖切換矩陣 (Multi-Layer TileMatrix)
+全新封裝 `LAYER_CONFIG` 配置架構。不論是在**主專案地圖分頁**或**彈出式「地圖揀位」視窗**中，前線人員皆可無縫一鍵切換四種針對不同調查場景的專業地圖圖層：
+* **🌙 Dark 模式 (Carto Dark)**：高對比深色地圖，能有效過濾都市雜訊，在戶外強光下最能清晰突顯 Good / Fair / Poor / Dead 顏色編碼的樹木健康標記。
+* **🛰️ 衛星航照 (Esri Imagery)**：調用高解析度世界航照影像，前線人員可以實時比對環境地物，精確評估外觀樹冠幅（Crown Spread）與實際生長邊界。
+* **⛰️ 地形等高線 (Esri Topo)**：提供世界地形等高線圖，方便山區或郊野調查員精確評估坡度、坍塌風險與微地形生長環境。
+* **🏙️ 街道地圖 (OpenStreetMap)**：標準 OSM 向量街道圖，提供詳細的城鎮路名、地號及都市基礎設施資訊，便利前線尋車與確認地址。
 
-## ✨ 核心功能
-
-* **🗂️ 專案與庫存管理**：動態分類追蹤不同調查案件，即時回傳與統計全案樹木總數（Total Trees）、專案樹木量及已完成座標標記之樹木（Mapped Count）。
-* **🌿 雙向智慧樹種 autocomplete**：內建學名（Botanical Name）與中文名雙向即時過濾及自動補完機制。只要輸入部分關鍵字，系統即自動填寫對應欄位，大幅減少前線手打打字時間。
-* **🗺️ 互動式顏色編碼標記**：地圖上所有樹木標記均根據健康狀況（**Good**, **Fair**, **Poor**, **Dead**）進行嚴格的顏色編碼，並支援動態篩選器（Filter Toggles），可單獨隱藏或顯示特定健康指標的樹木。
-* **🛰️ 四階式漸進 GPS 定位鏈**：
-  1. *一階優先*：啟動高精度流動裝置衛星定位（High Accuracy GPS Tracker）。
-  2. *二階後備*：若訊號不佳，自動調降為裝置低耗能大氣定位。
-  3. *三階網絡*：若硬體無回應，自動無縫切換至 IP-based 網絡粗略地理位置估算。
-  4. *四階手動*：整合「地圖揀位」視窗，配合全新 v20 衛星圖層，可在地圖上直接點擊，手動配置微調座標。
-* **📥 跨專案數據矩陣匯出**：整合進階 SheetJS 處理套件，提供一鍵快速匯出單一專案詳細數據表格，或一鍵產出包含所有專案彙整明細與 Summary 摘要總表的複合式分頁 Excel (`.xlsx`) 活頁簿。
-* **📱 流動裝置優先與單鍵診斷**：完全針對 field tablet 與流動電話進行 RWD 響應式佈局優化。內建一鍵系統診斷選單（Diagnosis Matrix），可即時調閱、檢查 CDN 快取、Supabase API 連線狀況與 HTTPS 權限邊界。
+### 3. 🔒 異步線程死鎖防護控制 (Map Sync Engine Lock)
+針對從列表分頁點擊「📍 地圖」跳轉特定樹木時可能引發的 Race Condition（特別是流動端 DOM 未完全渲染時導致的地圖視角飄移、Popup 卡死 Bug），v20 重構了導航同步邏輯：
+* 引入核心鎖定控制旗標（`_focusInProgress` 與 `_focusResolved`）。當定位任務啟動時會立即凍結衝突線程，強制排隊等待 Leaflet 初始化完畢，並在 setView 視角就位後，再觸發 Popup 開啟、Tooltip 高亮（Highlight）閃爍動畫以及健康圖層篩選自動解鎖。
 
 ---
 
-## 🛠️ 技術棧
+## ✨ 核心基礎功能
 
-* **前端核心**：純原生 HTML5、CSS3 Variables（深色高對比度 UI 矩陣）、Vanilla JavaScript（無第三方肥大框架依賴）。
-* **後端架構**：Supabase JavaScript Client SDK v2 (PostgreSQL 即時雲端引擎)。
-* **地圖視覺化**：Leaflet.js v1.9.4（底圖經由 CARTO & Esri ArcGIS Rest Pipeline 提供）。
-* **數據分析處置**：SheetJS (XLSX 核心引擎)。
+* **🗂️ 專案與庫存矩陣**：建立無限量的樹木調查專案，主介面動態回傳與統計全案樹木總數（Total Trees）、特定專案樹木量及已配有座標之樹木總數（Mapped Count）。
+* **🌿 雙向智慧樹種補完**：內建學名（Botanical Name）與中文名雙向即時過濾及自動補完機制。只要輸入部分關鍵字，系統自動連鎖填寫對應欄位，免除前線反覆翻查樹木手冊的繁瑣程序。
+* **📊 專業級數據匯出**：整合 SheetJS 處理套件，提供一鍵快速匯出單一專案詳細數據表格，或一鍵產出包含所有專案彙整明細與 Summary 摘要總表的複合式多活頁 Excel (`.xlsx`) 報告書。
+* **🛰️ 四階式斷網定位鏈**：一階啟動高精度流動裝置衛星定位（High Accuracy GPS Tracker）；二階自動調降為裝置低耗能大氣定位；三階網絡無縫切換至 IP-based 網絡粗略地理位置估算；四階整合全新多底圖「地圖揀位」視窗，無訊號時仍可看圖點擊配置座標。
 
 ---
 
-## 🚀 資料庫初始化設定 (`Supabase`)
+## 🚀 資料庫與雲端存儲初始化設定 (`Supabase`)
 
-為了確保 `initial_form V20 new map.html` 順利運作，請前往您的 **Supabase SQL Editor** 貼上並執行以下 SQL 語句，以建立專案所需的資料表結構：
+為了確保 v20 旗艦相片版各模組順利運作，請前往您的 **Supabase SQL Editor** 貼上並執行以下 SQL 語句，以建立完整的關係型資料庫架構：
 
-### 1. 樹種清單對照表 (species_list)
+### 1. 智慧樹種清單對照表 (species_list)
 ```sql
 DROP TABLE IF EXISTS species_list CASCADE;
 
@@ -58,8 +52,8 @@ CREATE TABLE species_list (
     full_name TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- 💡 提示：建表後請批次匯入您本地的樹種對照數據（~862 條），即可全面啟用前端雙向自動補完選單。
 ```
-> 💡 *提示：建表後請批次匯入您本地的樹種對照數據（~862 條），即可全面啟用前端雙向智慧自動完成下拉選單。*
 
 ### 2. 專案主表 (projects)
 ```sql
@@ -97,16 +91,40 @@ CREATE TABLE trees (
 );
 ```
 
+### 4. 【v20 新增】樹木調查照片關聯表 (tree_photos)
+```sql
+CREATE TABLE tree_photos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tree_id UUID REFERENCES trees(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    thumb_path TEXT,
+    caption TEXT,
+    taken_at TIMESTAMPTZ DEFAULT NOW(),
+    file_size INT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 5. 【v20 新增】雲端存儲桶設定 (Supabase Storage Bucket)
+請在您的 Supabase 管理後台左側選單點擊 **Storage**，並按照以下參數手動配置：
+1. 點擊 **New Bucket**。
+2. 命名為：`tree-photos` (必須與程式碼內 `storage.from('tree-photos')` 完全一致)。
+3. 將 Bucket 權限設定為 **Public**（允許公開訪問，以便地圖和縮圖能透過 Public URL 直連渲染）。
+4. *推薦添加 Policy 安全原則*：設定所有人（或 Anon 角色）擁有 `Select`、`Insert`、`Delete` 權限。
+
 ---
 
-## 🌐 瀏覽器安全性與 Geolocation 規範
+## 🌐 流動端權限與資安限制 (Critical Compliance)
 
-根據現代網頁瀏覽器（iOS Safari / Android Chrome）的最高安全權限矩陣：
-* **HTTPS 傳輸協定強制性**：除了本地端（`localhost`、`127.0.0.1`）以外，所有利用舊式 `http://` 傳輸或 `file://` 直接開檔的網頁，瀏覽器一律會強制封鎖 `navigator.geolocation` API。
-* **部署方案**：請務必將本專案的 `html` 原始碼部署於具備安全憑證（**HTTPS**）的發佈 pipeline（如 *GitHub Pages*、*Vercel* 或 *Netlify*），以確保前線流動端在現場調查時能順利呼叫高精度 GPS 模組。
+現代流動瀏覽器（iOS Safari / Android Chrome）為了用戶隱私，設有極嚴格的硬體邊界限制：
+* **HTTPS 安全通道限制**：除本機環境（`localhost`、`127.0.0.1`）外，瀏覽器規定所有透過舊式 `http://` 傳輸或 `file://` 直接雙擊開啟的網頁，將**永久強制封鎖**相機調用（`capture="environment"`）以及高精度 GPS 定位（`navigator.geolocation`）。
+* **正確部署路徑**：請務必將本專案的單一 `html` 檔案部署於具備安全凭证（**HTTPS**）的發佈託管管道（如 *GitHub Pages*、*Vercel* 或 *Netlify*），才能在前線戶外調查時順利啟用相機與 GPS 硬件。
 
 ---
 
 ## 🧑‍💻 關於作者
 
-由 **Terry Cheung** 研發設計。歡迎根據不同國家、地區的樹藝法規、特定樹種保育清單或特定的 arborist 調查標準，自由分支出原始碼並優化資料表欄位架構！
+由 **Terry Cheung** 研發設計。本專案保持零框架（Zero-framework）極致精簡效能，歡迎自由分支出原始碼、優化大容量數據矩陣、或自訂符合在地政府法規的調查基準與報告格式！
