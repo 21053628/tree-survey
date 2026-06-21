@@ -529,6 +529,7 @@ var _pickerLat = null;
 var _pickerLng = null;
 var _gpsFallbackStage = 0;
 var _suggestReady = false;
+var _pendingFocusTreeId = null;
 
 // ============================================================
 // UUID FALLBACK (B8: crypto.randomUUID needs HTTPS)
@@ -1026,6 +1027,9 @@ function focusTreeOnMap(treeId) {
     _cachedTreeData = [];
     if (mapObj) { destroyMap(); }
     
+    // Set pending focus so _doRenderMap skips fitBounds and centers directly on this tree
+    _pendingFocusTreeId = treeId;
+    
     setTimeout(function(){ renderMap(); }, 100);
     
     // Polling: 等 map render 完成 + marker 出現
@@ -1033,7 +1037,7 @@ function focusTreeOnMap(treeId) {
 }
 function _focusTreeOnMapNow(treeId, retryCount) {
     retryCount = retryCount || 0;
-    // Also poll when mapObj is still null (map not yet initialized)
+    // Poll until mapObj is ready and markers are populated by _doRenderMap
     if (!mapObj) {
         if (retryCount < 80) {
             setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
@@ -1044,28 +1048,18 @@ function _focusTreeOnMapNow(treeId, retryCount) {
     }
     var marker = markerLookup[treeId];
     if (!marker) {
-        // Polling: 每 150ms 再試，最多等 10 秒（讓 _doRenderMapFromDB 有充足時間 fetch）
+        // Polling: map exists but marker not yet rendered
         if (retryCount < 66) {
             setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
         } else {
-            // 超時：map 已 render，但搵唔到 marker → 棵樹冇座標
             var tree = _cachedTreeData.find(function(t){ return t.id === treeId; });
             if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
             else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
         }
         return;
     }
-    // Marker found — highlight & popup
-    var treeData = _cachedTreeData.find(function(t){ return t.id === treeId; });
-    if (treeData && treeData.healthCondition && _hiddenHealth[treeData.healthCondition]) { toggleHealthFilter(treeData.healthCondition, null); }
-    mapObj.setView(marker.getLatLng(), Math.max(mapObj.getZoom(), 18));
-    marker.openPopup();
-    var tooltip = marker.getTooltip();
-    if (tooltip) { var el = tooltip.getElement(); if (el) { el.classList.add('highlight'); setTimeout(function(){ el.classList.remove('highlight'); }, 2000); } }
-    var iconEl = marker.getElement();
-    if (iconEl) { iconEl.style.transition = 'transform 0.3s ease'; iconEl.style.transform = 'translateY(-8px)'; setTimeout(function(){ iconEl.style.transform = 'translateY(0)'; }, 300); }
-    var si = document.getElementById('mapSearchInput');
-    if (si) si.value = marker._treeId || treeId;
+    // Marker found — _doRenderMap already handled setView + popup + highlight via _pendingFocusTreeId.
+    // Just apply filters to finalize.
     applyMapFilters();
 }
 
@@ -1155,9 +1149,48 @@ function _doRenderMap(trees) {
         mapMarkers.push(marker); if (t.id) markerLookup[t.id] = marker;
         bounds.push([lat, lng]);
     });
-    if (bounds.length === 1) mapObj.setView(bounds[0], 17);
-    else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
-    document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+    if (_pendingFocusTreeId) {
+        // 有 pending focus：直接跳到目標樹，避免 fitBounds 動畫衝突
+        var focusMarker = markerLookup[_pendingFocusTreeId];
+        if (focusMarker) {
+            mapObj.setView(focusMarker.getLatLng(), 18, { animate: false });
+            // 延遲打開 popup 確保地圖已完全初始化
+            setTimeout(function() { focusMarker.openPopup(); }, 300);
+            var focusTooltip = focusMarker.getTooltip();
+            if (focusTooltip) {
+                setTimeout(function() {
+                    var fe = focusTooltip.getElement();
+                    if (fe) { fe.classList.add('highlight'); setTimeout(function(){ fe.classList.remove('highlight'); }, 2000); }
+                }, 400);
+            }
+            var focusIconEl = focusMarker.getElement();
+            if (focusIconEl) {
+                setTimeout(function() {
+                    focusIconEl.style.transition = 'transform 0.3s ease';
+                    focusIconEl.style.transform = 'translateY(-8px)';
+                    setTimeout(function(){ focusIconEl.style.transform = 'translateY(0)'; }, 300);
+                }, 500);
+            }
+            var si = document.getElementById('mapSearchInput');
+            if (si) si.value = focusMarker._treeId || _pendingFocusTreeId;
+            // unhide health filter if the focused tree is hidden
+            var focusTreeData = _cachedTreeData.find(function(t){ return t.id === _pendingFocusTreeId; });
+            if (focusTreeData && focusTreeData.healthCondition && _hiddenHealth[focusTreeData.healthCondition]) {
+                toggleHealthFilter(focusTreeData.healthCondition, null);
+            }
+            document.getElementById('mapStatus').textContent = '📍 已定位 ' + (focusMarker._treeId || '') + ' | 全部 ' + withCoords.length + ' 棵';
+        } else {
+            // marker not found (tree has no coords), fallback to fitBounds
+            if (bounds.length === 1) mapObj.setView(bounds[0], 17);
+            else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+            document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+        }
+        _pendingFocusTreeId = null;
+    } else {
+        if (bounds.length === 1) mapObj.setView(bounds[0], 17);
+        else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+        document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+    }
     // B4: multiple invalidateSize calls for slow phones
     setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
     setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 600);
