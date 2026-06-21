@@ -984,6 +984,7 @@ function openProject(projectId, projectName) {
     document.getElementById('view-project-detail').classList.remove('hidden');
     document.getElementById('breadcrumbProjectName').textContent = projectName;
     document.getElementById('fabAddTree').classList.remove('hidden');
+    _cachedTreeData = []; if (mapObj) { destroyMap(); }
     currentDetailTab = 'list'; showListView();
     treePage = 0; loadProjectTrees();
 }
@@ -1004,7 +1005,11 @@ function showMapView() {
     document.getElementById('view-project-map').classList.remove('hidden');
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
-    setTimeout(function(){ renderMap(); }, 100);
+    if (_cachedTreeData.length === 0 || !mapObj) {
+        setTimeout(function(){ renderMap(); }, 100);
+    } else {
+        setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
+    }
 }
 
 // ============================================================
@@ -1079,7 +1084,7 @@ function toggleHealthFilter(health, btnEl) {
 // ============================================================
 function destroyMap() {
     if (mapObj) { mapObj.remove(); mapObj = null; }
-    mapMarkers = []; markerLookup = {}; _cachedTreeData = []; _hiddenHealth = {};
+    mapMarkers = []; markerLookup = {}; _hiddenHealth = {};
     if (_locateMarker) { _locateMarker = null; }
     document.querySelectorAll('.filter-toggle').forEach(function(b){ b.classList.add('on'); b.classList.remove('off'); });
     var si = document.getElementById('mapSearchInput'); if (si) si.value = '';
