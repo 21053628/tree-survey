@@ -1010,17 +1010,32 @@ function showMapView() {
 // ============================================================
 // LIST → MAP SYNC (B1: fixed UUID → Tree ID)
 // ============================================================
+var _pendingFocusTreeId = null;
 function focusTreeOnMap(treeId) {
+    _pendingFocusTreeId = treeId;
     showMapView();
-    if (!mapObj || mapMarkers.length === 0) { setTimeout(function(){ _focusTreeOnMapNow(treeId); }, 600); }
-    else { _focusTreeOnMapNow(treeId); }
+    // Polling: 等 map render 完成後 marker 會出現
+    _focusTreeOnMapNow(treeId, 0);
 }
-function _focusTreeOnMapNow(treeId) {
+function _focusTreeOnMapNow(treeId, retryCount) {
+    retryCount = retryCount || 0;
     if (!mapObj) return;
     var marker = markerLookup[treeId];
-    if (!marker) { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); return; }
-    var treeData = _cachedTreeData.find(function(t){ return t.id === treeId; });
-    if (treeData && treeData.healthCondition && _hiddenHealth[treeData.healthCondition]) { toggleHealthFilter(treeData.healthCondition, null); }
+    if (!marker) {
+        // Polling: 每 150ms 再試，最多等 10 秒（讓 _doRenderMapFromDB 有充足時間 fetch）
+        if (retryCount < 66) {
+            setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        } else {
+            // 超時：map 已 render，但搵唔到 marker → 棵樹冇座標
+            var tree = _cachedTreeData.find(function(t){ return t.id === treeId; });
+            if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
+            else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
+            _pendingFocusTreeId = null;
+        }
+        return;
+    }
+    // Marker found — highlight & popup
+    _pendingFocusTreeId = null;
     mapObj.setView(marker.getLatLng(), Math.max(mapObj.getZoom(), 18));
     marker.openPopup();
     var tooltip = marker.getTooltip();
@@ -1028,7 +1043,7 @@ function _focusTreeOnMapNow(treeId) {
     var iconEl = marker.getElement();
     if (iconEl) { iconEl.style.transition = 'transform 0.3s ease'; iconEl.style.transform = 'translateY(-8px)'; setTimeout(function(){ iconEl.style.transform = 'translateY(0)'; }, 300); }
     var si = document.getElementById('mapSearchInput');
-    if (si) si.value = marker._treeId || treeId;  // B1 FIX: use marker's treeIdNo, not UUID
+    if (si) si.value = marker._treeId || treeId;
     applyMapFilters();
 }
 
