@@ -1005,15 +1005,28 @@ function showMapView() {
     document.getElementById('view-project-map').classList.remove('hidden');
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
-    // Always re-render to ensure correct sizing when switching from hidden list view
-    setTimeout(function(){ renderMap(); }, 100);
+    // Only re-render if map not initialized or no cached data
+    if (!mapObj || _cachedTreeData.length === 0) {
+        setTimeout(function(){ renderMap(); }, 100);
+    }
 }
 
 // ============================================================
 // LIST → MAP SYNC (B1: fixed UUID → Tree ID)
 // ============================================================
 function focusTreeOnMap(treeId) {
-    showMapView();
+    // Switch to map tab manually (not via showMapView to avoid triggering unnecessary re-render)
+    currentDetailTab = 'map';
+    document.getElementById('view-project-list').classList.add('hidden');
+    document.getElementById('view-project-map').classList.remove('hidden');
+    document.getElementById('tabList').classList.remove('active');
+    document.getElementById('tabMap').classList.add('active');
+    
+    // Only render if map not initialized or no cached data
+    if (!mapObj || _cachedTreeData.length === 0) {
+        setTimeout(function(){ renderMap(); }, 100);
+    }
+    
     // Polling: 等 map render 完成 + marker 出現
     _focusTreeOnMapNow(treeId, 0);
 }
