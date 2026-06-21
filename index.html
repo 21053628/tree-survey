@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>🌳 樹木調查 Supabase v19.4</title>
+    <title>🌳 樹木調查 Supabase v19.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           onerror="this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'">
     <script>
@@ -530,6 +530,8 @@ var _pickerLng = null;
 var _gpsFallbackStage = 0;
 var _suggestReady = false;
 var _pendingFocusTreeId = null;
+var _focusResolved = false;
+var _focusInProgress = false;
 
 // ============================================================
 // UUID FALLBACK (B8: crypto.randomUUID needs HTTPS)
@@ -560,7 +562,7 @@ function toast(msg, type) {
     setTimeout(function(){ d.style.opacity = '0'; d.style.transition = 'opacity 0.3s'; }, 3000);
     setTimeout(function(){ d.remove(); }, 3500);
 }
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
 function sdkReady() { return !!(window.supabase && typeof window.supabase.createClient === 'function'); }
 function xlsxReady() { return !!(window.XLSX && typeof window.XLSX.utils === 'object'); }
 function leafletReady() { return !!(window.L && typeof window.L.map === 'function'); }
@@ -766,7 +768,7 @@ function closeMapPicker() {
 }
 
 // ============================================================
-// LOCATE ME (B5: check canUseGPS)
+// LOCATE ME (B5: check canUseGPS) + S2: invalidateSize after setView
 // ============================================================
 function locateMe() {
     if (!mapObj || !leafletReady()) { toast('⚠️ 地圖未初始化', 'warning'); return; }
@@ -785,6 +787,7 @@ function locateMe() {
             _locateMarker = L.marker([lat, lng], { icon: userIcon }).addTo(mapObj)
                 .bindTooltip('📍 你喺度 (±' + acc + 'm)', { permanent: true, direction: 'right', className: 'tree-label' });
             mapObj.setView([lat, lng], Math.max(mapObj.getZoom(), 16));
+            setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
             toast('✅ 已定位 (±' + acc + 'm)', 'success');
         },
         function() { toast('⚠️ 無法定位', 'warning'); },
@@ -1006,60 +1009,66 @@ function showMapView() {
     document.getElementById('view-project-map').classList.remove('hidden');
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
-    // Only re-render if map not initialized or no cached data
     if (!mapObj || _cachedTreeData.length === 0) {
         setTimeout(function(){ renderMap(); }, 100);
     }
 }
 
 // ============================================================
-// LIST → MAP SYNC (B1: fixed UUID → Tree ID)
+// LIST → MAP SYNC (T1-1+T1-2: focusResolved + focusInProgress)
 // ============================================================
 function focusTreeOnMap(treeId) {
-    // Switch to map tab manually (not via showMapView to avoid triggering unnecessary re-render)
     currentDetailTab = 'map';
     document.getElementById('view-project-list').classList.add('hidden');
     document.getElementById('view-project-map').classList.remove('hidden');
     document.getElementById('tabList').classList.remove('active');
     document.getElementById('tabMap').classList.add('active');
     
-    // 強制清理舊地圖及 cache，防止 race condition：舊 mapObj popup 被新 renderMap() -> destroyMap() 銷毀
+    if (_focusInProgress) { _focusInProgress = false; }
+    _focusInProgress = true;
+    _focusResolved = false;
     _cachedTreeData = [];
     if (mapObj) { destroyMap(); }
     
-    // Set pending focus so _doRenderMap skips fitBounds and centers directly on this tree
     _pendingFocusTreeId = treeId;
     
     setTimeout(function(){ renderMap(); }, 100);
     
-    // Polling: 等 map render 完成 + marker 出現
     _focusTreeOnMapNow(treeId, 0);
 }
 function _focusTreeOnMapNow(treeId, retryCount) {
     retryCount = retryCount || 0;
-    // Poll until mapObj is ready and markers are populated by _doRenderMap
+    if (_focusResolved) {
+        _focusInProgress = false;
+        if (!markerLookup[treeId]) {
+            var tree = _cachedTreeData.find(function(t){ return t.id === treeId; });
+            if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
+            else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
+        } else { applyMapFilters(); }
+        return;
+    }
     if (!mapObj) {
         if (retryCount < 80) {
             setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
         } else {
+            _focusResolved = true; _focusInProgress = false;
             toast('⚠️ 地圖初始化逾時', 'warning');
         }
         return;
     }
     var marker = markerLookup[treeId];
     if (!marker) {
-        // Polling: map exists but marker not yet rendered
         if (retryCount < 66) {
             setTimeout(function(){ _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
         } else {
+            _focusResolved = true; _focusInProgress = false;
             var tree = _cachedTreeData.find(function(t){ return t.id === treeId; });
             if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
             else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
         }
         return;
     }
-    // Marker found — _doRenderMap already handled setView + popup + highlight via _pendingFocusTreeId.
-    // Just apply filters to finalize.
+    _focusResolved = true; _focusInProgress = false;
     applyMapFilters();
 }
 
@@ -1091,11 +1100,11 @@ function toggleHealthFilter(health, btnEl) {
 }
 
 // ============================================================
-// MAP RENDER (B4: extra invalidateSize, B10: error status)
+// MAP RENDER (T0-1: _cachedTreeData in destroyMap)
 // ============================================================
 function destroyMap() {
     if (mapObj) { mapObj.remove(); mapObj = null; }
-    mapMarkers = []; markerLookup = {}; _hiddenHealth = {};
+    mapMarkers = []; markerLookup = {}; _cachedTreeData = []; _hiddenHealth = {};
     if (_locateMarker) { _locateMarker = null; }
     document.querySelectorAll('.filter-toggle').forEach(function(b){ b.classList.add('on'); b.classList.remove('off'); });
     var si = document.getElementById('mapSearchInput'); if (si) si.value = '';
@@ -1124,7 +1133,7 @@ async function _doRenderMapFromDB() {
         _cachedTreeData = allTrees; _doRenderMap(allTrees);
     } catch(e) {
         toast('❌ Map load error: ' + e.message, 'error');
-        document.getElementById('mapStatus').textContent = '❌ 載入失敗';  // B10 FIX
+        document.getElementById('mapStatus').textContent = '❌ 載入失敗';
     }
 }
 function _doRenderMap(trees) {
@@ -1150,11 +1159,9 @@ function _doRenderMap(trees) {
         bounds.push([lat, lng]);
     });
     if (_pendingFocusTreeId) {
-        // 有 pending focus：直接跳到目標樹，避免 fitBounds 動畫衝突
         var focusMarker = markerLookup[_pendingFocusTreeId];
         if (focusMarker) {
             mapObj.setView(focusMarker.getLatLng(), 18, { animate: false });
-            // 延遲打開 popup 確保地圖已完全初始化
             setTimeout(function() { focusMarker.openPopup(); }, 300);
             var focusTooltip = focusMarker.getTooltip();
             if (focusTooltip) {
@@ -1173,25 +1180,24 @@ function _doRenderMap(trees) {
             }
             var si = document.getElementById('mapSearchInput');
             if (si) si.value = focusMarker._treeId || _pendingFocusTreeId;
-            // unhide health filter if the focused tree is hidden
             var focusTreeData = _cachedTreeData.find(function(t){ return t.id === _pendingFocusTreeId; });
             if (focusTreeData && focusTreeData.healthCondition && _hiddenHealth[focusTreeData.healthCondition]) {
                 toggleHealthFilter(focusTreeData.healthCondition, null);
             }
             document.getElementById('mapStatus').textContent = '📍 已定位 ' + (focusMarker._treeId || '') + ' | 全部 ' + withCoords.length + ' 棵';
         } else {
-            // marker not found (tree has no coords), fallback to fitBounds
             if (bounds.length === 1) mapObj.setView(bounds[0], 17);
             else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
             document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
         }
         _pendingFocusTreeId = null;
+        _focusResolved = true;
     } else {
+        _focusResolved = true;
         if (bounds.length === 1) mapObj.setView(bounds[0], 17);
         else if (bounds.length > 1) mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
         document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
     }
-    // B4: multiple invalidateSize calls for slow phones
     setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 200);
     setTimeout(function(){ if (mapObj) mapObj.invalidateSize(); }, 600);
 }
@@ -1230,7 +1236,7 @@ async function loadProjects() {
 function searchProjects() { projPage=0; loadProjects(); }
 
 // ============================================================
-// PROJECT TREES (B11: try-finally for _loadingTrees)
+// PROJECT TREES
 // ============================================================
 async function loadProjectTrees() {
     if (_loadingTrees) return; _loadingTrees = true;
@@ -1270,7 +1276,7 @@ async function loadProjectTrees() {
         }).join('');
         document.getElementById('treePagination').innerHTML='<span>共 '+count+' 棵樹</span><div class="flex gap-2"><button class="btn btn-outline btn-xs" onclick="treePage=0;loadProjectTrees();" '+(treePage===0?'disabled':'')+'>⏮</button><button class="btn btn-outline btn-xs" onclick="treePage=Math.max(0,treePage-1);loadProjectTrees();" '+(treePage===0?'disabled':'')+'>◀</button><button class="btn btn-outline btn-xs" onclick="treePage++;loadProjectTrees();" '+((treePage+1)*PAGE_SIZE>=count?'disabled':'')+'>▶</button></div>';
     } catch(e) { tb.innerHTML = '<tr><td colspan="10" class="empty" style="color:#f87171;">❌ '+e.message+'</td></tr>'; }
-    _loadingTrees = false;  // B11 FIX: always reset
+    _loadingTrees = false;
 }
 function searchTrees() { treePage=0; loadProjectTrees(); }
 
@@ -1296,7 +1302,7 @@ async function saveProject() {
     var nm=document.getElementById('proj_name').value.trim(); if (!nm) { toast('⚠️ 請輸入名稱','warning'); return; }
     var eid=document.getElementById('proj_editId').value;
     var p={name:nm,surveyDate:document.getElementById('proj_surveyDate').value,notes:document.getElementById('proj_notes').value.trim()};
-    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }  // B8 FIX: uuid()
+    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }
     var r=eid ? await supabase.from('projects').update(p).eq('id',eid).select() : await supabase.from('projects').insert(p).select();
     if (r.error) { toast('❌ '+r.error.message,'error'); return; }
     toast(eid?'✅ 已更新':'✅ 已新增'); closeModal('projectModal'); loadProjects();
@@ -1306,7 +1312,7 @@ function confirmDeleteProject(id,name) {
         var tc=r.count||0; var msg='刪除專案「'+name+'」'; if (tc>0) msg+=' 及裡面 '+tc+' 棵樹'; msg+='？此操作無法復原。';
         document.getElementById('confirmMsg').textContent=msg; pendingDelete={type:'project',id:id,name:name};
         document.getElementById('confirmModal').classList.remove('hidden');
-    }).catch(function(e){ toast('❌ '+e.message,'error'); });  // B7 FIX: catch
+    }).catch(function(e){ toast('❌ '+e.message,'error'); });
 }
 
 // ============================================================
@@ -1376,13 +1382,13 @@ async function saveTree() {
         latitude: latNum, longitude: lngNum,
         syncStatus:eid?'pending':'local', updatedAt:new Date().toISOString()
     };
-    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }  // B8 FIX: uuid()
+    if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }
     var r=eid ? await supabase.from('trees').update(p).eq('id',eid).select() : await supabase.from('trees').insert(p).select();
     if (r.error) { toast('❌ '+r.error.message,'error'); return; }
     toast(eid?'✅ 已更新':'✅ 已新增');
     closeModal('treeModal');
     _cachedTreeData = []; if (mapObj) { destroyMap(); }
-    loadProjectTrees(); loadProjects();
+    await loadProjectTrees(); await loadProjects();
 }
 function confirmDeleteTree(id,name) {
     document.getElementById('confirmMsg').textContent='確定要刪除樹木「'+name+'」？';
@@ -1422,7 +1428,7 @@ async function refreshAll() {
 // ============================================================
 async function diagnosis() {
     var L=[]; function log(m){L.push(m);console.log('[DIAG]',m);}
-    log('═══ v19.4 診斷 ═══');
+    log('═══ v19.5 診斷 ═══');
     log('SDK: '+(sdkReady()?'✅':'❌')); log('XLSX: '+(xlsxReady()?'✅':'❌')); log('Leaflet: '+(leafletReady()?'✅':'❌'));
     log('Species: Bot '+botanicalNames.length+' | Chi '+chineseNames.length);
     log('Protocol: ' + window.location.protocol + ' | Host: ' + window.location.hostname);
@@ -1453,7 +1459,7 @@ window.addEventListener('resize', function() {
 // ============================================================
 // BOOT
 // ============================================================
-console.log('🚀 v19.4 Boot (Bug-fix release)...');
+console.log('🚀 v19.5 Boot (Bug-fix release)...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true,'CDN 載入中...');
 var _pollCount=0;
