@@ -57,8 +57,8 @@ var _poll = setInterval(function(){
         // initSupabase() now calls initAuth() which will show/hide login based on session
         return;
     }
-    if (_pollCount > 150) { clearInterval(_poll); setStatus(false, '⏰ CDN 超時'); }
-}, 100);
+    if (_pollCount > CDN_POLL_MAX) { clearInterval(_poll); setStatus(false, '⏰ CDN 超時'); }
+}, CDN_POLL_INTERVAL_MS);
 
 // ============================================================
 // 全域事件：Modal overlay 點擊關閉
@@ -106,7 +106,7 @@ window.addEventListener('resize', function() {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(function() {
         var w = window.innerWidth;
-        if (Math.abs(w - _lastW) < 5) return;
+        if (Math.abs(w - _lastW) < RESIZE_THRESHOLD_PX) return;
         _lastW = w;
         // 切換表格/卡片視圖需重新渲染
         if (AppState.currentView === 'projects' && typeof loadProjects === 'function') {
@@ -118,8 +118,8 @@ window.addEventListener('resize', function() {
                 setTimeout(function() {
                     if (AppState.mapObj) AppState.mapObj.invalidateSize();
                     if (typeof renderMap === 'function') renderMap();
-                }, 300);
+                }, DELAY_FOCUS_OPEN_POPUP);
             }
         }
-    }, 500);
+    }, RESIZE_DEBOUNCE_MS);
 });

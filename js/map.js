@@ -65,25 +65,17 @@ function renderMap() {
 }
 
 /**
- * 從 DB 載入樹木資料並渲染地圖
+ * 從 DB 載入樹木資料並渲染地圖（使用 fetchAllPages 統一工具）
  */
 async function _doRenderMapFromDB() {
     if (!AppState.supabase || !AppState.currentProjectId) return;
     try {
-        var allTrees = [];
-        var from = 0;
-        while (true) {
-            var r = await AppState.supabase.from('trees')
+        var allTrees = await fetchAllPages(
+            AppState.supabase.from('trees')
                 .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude')
                 .eq('projectId', AppState.currentProjectId)
-                .range(from, from + 999)
-                .order('treeIdNo', { ascending: true });
-            if (r.error) break;
-            if (!r.data || r.data.length === 0) break;
-            allTrees = allTrees.concat(r.data);
-            if (r.data.length < 1000) break;
-            from += 1000;
-        }
+                .order('treeIdNo', { ascending: true })
+        );
         AppState._cachedTreeData = allTrees;
         _doRenderMap(allTrees);
     } catch(e) {
@@ -100,7 +92,7 @@ function _doRenderMap(trees) {
     var container = document.getElementById('mapContainer');
     if (!container) return;
     destroyMap();
-    AppState.mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, 15);
+    AppState.mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, MAP_DEFAULT_ZOOM);
     var layerCfg = LAYER_CONFIG[AppState._currentLayer] || LAYER_CONFIG['dark'];
     AppState.mapObj._currentTileLayer = L.tileLayer(layerCfg.url, layerCfg.options).addTo(AppState.mapObj);
     document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b) {
@@ -114,7 +106,7 @@ function _doRenderMap(trees) {
     document.getElementById('sProjectMappedCount').textContent = withCoords.length;
 
     if (withCoords.length === 0) {
-        AppState.mapObj.setView(HK_CENTER, 14);
+        AppState.mapObj.setView(HK_CENTER, MAP_NO_COORDS_ZOOM);
         document.getElementById('mapStatus').textContent = '冇樹有座標';
         return;
     }
@@ -143,12 +135,12 @@ function _doRenderMap(trees) {
             (t.trunkDiameter ? '📐 DBH: ' + esc(t.trunkDiameter) + 'mm<br>' : '') +
             (t.overallHeight ? '📏 H: ' + esc(t.overallHeight) + 'm<br>' : '') +
             (t.crownSpread ? '🌳 Crown: ' + esc(t.crownSpread) + 'm<br>' : '') +
-            '💚 ' + (t.healthCondition || '—') + ' | 🏗️ ' + (t.structuralCondition || '—') + '<br>' +
+            '💚 ' + esc(t.healthCondition || '—') + ' | 🏗️ ' + esc(t.structuralCondition || '—') + '<br>' +
             '📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
             '<div class="popup-photo-strip" data-tree-db-id="' + esc(t.id) + '"><div class="strip-loading">📷 點擊載入照片...</div></div>' +
             '<div class="pop-actions">' +
-            '<button onclick="editTree(\'' + t.id + '\')">✏️ 編輯</button>' +
-            '<button onclick="confirmDeleteTree(\'' + t.id + '\',\'' + esc(t.treeIdNo || t.id) + '\')" style="color:#f87171;border-color:rgba(239,68,68,.4)">🗑 刪除</button>' +
+            '<button data-action="edit-tree" data-tree-id="' + esc(t.id) + '">✏️ 編輯</button>' +
+            '<button data-action="delete-tree" data-tree-id="' + esc(t.id) + '" data-tree-name="' + esc(t.treeIdNo || t.id) + '" style="color:#f87171;border-color:rgba(239,68,68,.4)">🗑 刪除</button>' +
             '</div>'
         );
         AppState.mapMarkers.push(marker);
@@ -156,7 +148,7 @@ function _doRenderMap(trees) {
         bounds.push([lat, lng]);
     });
 
-    // Popup 打開時載入照片 strip
+    // Popup 打開時載入照片 strip + 綁定按鈕事件（事件委派，取代 inline onclick）
     AppState.mapObj.on('popupopen', function(e) {
         var popupEl = e.popup.getElement();
         if (popupEl) {
@@ -167,6 +159,24 @@ function _doRenderMap(trees) {
                     loadPhotosIntoPopup(treeId, strip);
                 }
             }
+            // 事件委派：處理 popup 內的按鈕點擊
+            var editBtn = popupEl.querySelector('[data-action="edit-tree"]');
+            if (editBtn && !editBtn._bound) {
+                editBtn._bound = true;
+                editBtn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-tree-id');
+                    if (id) editTree(id);
+                });
+            }
+            var delBtn = popupEl.querySelector('[data-action="delete-tree"]');
+            if (delBtn && !delBtn._bound) {
+                delBtn._bound = true;
+                delBtn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-tree-id');
+                    var name = this.getAttribute('data-tree-name');
+                    if (id) confirmDeleteTree(id, name || id);
+                });
+            }
         }
     });
 
@@ -174,22 +184,22 @@ function _doRenderMap(trees) {
     if (AppState._pendingFocusTreeId) {
         var focusMarker = AppState.markerLookup[AppState._pendingFocusTreeId];
         if (focusMarker) {
-            AppState.mapObj.setView(focusMarker.getLatLng(), 18, { animate: false });
-            setTimeout(function() { focusMarker.openPopup(); }, 300);
+            AppState.mapObj.setView(focusMarker.getLatLng(), MAP_FOCUS_ZOOM, { animate: false });
+            setTimeout(function() { focusMarker.openPopup(); }, DELAY_FOCUS_OPEN_POPUP);
             var focusTooltip = focusMarker.getTooltip();
             if (focusTooltip) {
                 setTimeout(function() {
                     var fe = focusTooltip.getElement();
-                    if (fe) { fe.classList.add('highlight'); setTimeout(function() { fe.classList.remove('highlight'); }, 2000); }
-                }, 400);
+                    if (fe) { fe.classList.add('highlight'); setTimeout(function() { fe.classList.remove('highlight'); }, DELAY_GPS_WARN); }
+                }, DELAY_FOCUS_LABEL);
             }
             var focusIconEl = focusMarker.getElement();
             if (focusIconEl) {
                 setTimeout(function() {
                     focusIconEl.style.transition = 'transform 0.3s ease';
                     focusIconEl.style.transform = 'translateY(-8px)';
-                    setTimeout(function() { focusIconEl.style.transform = 'translateY(0)'; }, 300);
-                }, 500);
+                    setTimeout(function() { focusIconEl.style.transform = 'translateY(0)'; }, DELAY_FOCUS_OPEN_POPUP);
+                }, DELAY_FOCUS_ICON_ANIM);
             }
             var si = document.getElementById('mapSearchInput');
             if (si) si.value = focusMarker._treeId || AppState._pendingFocusTreeId;
@@ -199,20 +209,20 @@ function _doRenderMap(trees) {
             }
             document.getElementById('mapStatus').textContent = '📍 已定位 ' + (focusMarker._treeId || '') + ' | 全部 ' + withCoords.length + ' 棵';
         } else {
-            if (bounds.length === 1) AppState.mapObj.setView(bounds[0], 17);
-            else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+            if (bounds.length === 1) AppState.mapObj.setView(bounds[0], MAP_SINGLE_MARKER_ZOOM);
+            else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: MAP_FOCUS_ZOOM });
             document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
         }
         AppState._pendingFocusTreeId = null;
         AppState._focusResolved = true;
     } else {
         AppState._focusResolved = true;
-        if (bounds.length === 1) AppState.mapObj.setView(bounds[0], 17);
-        else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+        if (bounds.length === 1) AppState.mapObj.setView(bounds[0], MAP_SINGLE_MARKER_ZOOM);
+        else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: MAP_FOCUS_ZOOM });
         document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
     }
-    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, 200);
-    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, 600);
+    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, DELAY_MAP_INVALIDATE_1);
+    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, DELAY_MAP_INVALIDATE_2);
 }
 
 // ============================================================
@@ -236,7 +246,7 @@ function focusTreeOnMap(treeId) {
     if (AppState.mapObj) { destroyMap(); }
 
     AppState._pendingFocusTreeId = treeId;
-    setTimeout(function() { renderMap(); }, 100);
+    setTimeout(function() { renderMap(); }, DELAY_RENDER_MAP);
     _focusTreeOnMapNow(treeId, 0);
 }
 
@@ -259,8 +269,8 @@ function _focusTreeOnMapNow(treeId, retryCount) {
         return;
     }
     if (!AppState.mapObj) {
-        if (retryCount < 80) {
-            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        if (retryCount < MAP_RETRY_MAX) {
+            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, MAP_RETRY_INTERVAL_MS);
         } else {
             AppState._focusResolved = true;
             AppState._focusInProgress = false;
@@ -270,8 +280,8 @@ function _focusTreeOnMapNow(treeId, retryCount) {
     }
     var marker = AppState.markerLookup[treeId];
     if (!marker) {
-        if (retryCount < 66) {
-            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        if (retryCount < MAP_FOCUS_RETRY_MAX) {
+            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, MAP_RETRY_INTERVAL_MS);
         } else {
             AppState._focusResolved = true;
             AppState._focusInProgress = false;
@@ -334,3 +344,16 @@ function toggleHealthFilter(health, btnEl) {
     }
     applyMapFilters();
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.map = {
+    destroyMap: destroyMap,
+    getMarkerColor: getMarkerColor,
+    renderMap: renderMap,
+    focusTreeOnMap: focusTreeOnMap,
+    searchMapTrees: searchMapTrees,
+    applyMapFilters: applyMapFilters,
+    toggleHealthFilter: toggleHealthFilter
+};

@@ -65,23 +65,13 @@ async function _loadProjects() {
             return;
         }
 
-        // 計算每專案樹木數量
+        // 計算每專案樹木數量 — 使用 fetchAllPages 一次載入全部
         var treeCounts = {};
         if (r.data.length > 0) {
             var projectIds = r.data.map(function(d) { return d.id; });
-            var allTreeRefs = [];
-            var tcFrom = 0;
-            while (true) {
-                var tc = await AppState.supabase.from('trees')
-                    .select('projectId')
-                    .in('projectId', projectIds)
-                    .range(tcFrom, tcFrom + 999);
-                if (tc.error) { break; }
-                if (!tc.data || tc.data.length === 0) { break; }
-                allTreeRefs = allTreeRefs.concat(tc.data);
-                if (tc.data.length < 1000) { break; }
-                tcFrom += 1000;
-            }
+            var allTreeRefs = await fetchAllPages(
+                AppState.supabase.from('trees').select('projectId').in('projectId', projectIds)
+            );
             allTreeRefs.forEach(function(t) { treeCounts[t.projectId] = (treeCounts[t.projectId] || 0) + 1; });
         }
 
@@ -108,46 +98,131 @@ async function _loadProjects() {
 function renderProjectsList(data, treeCounts, totalCount) {
     var tb = document.getElementById('projectsBody');
     var cv = document.getElementById('projCardsView');
+    var fragment = document.createDocumentFragment();
 
     // Table View
-    tb.innerHTML = data.map(function(d) {
+    tb.innerHTML = '';
+    data.forEach(function(d) {
         var c = treeCounts[d.id] !== undefined ? treeCounts[d.id] : '...';
-        return '<tr>' +
-            '<td><strong style="color:#a5b4fc;cursor:pointer" onclick="openProject(\'' + d.id + '\',\'' + esc(d.name) + '\')">📁 ' + esc(d.name) + '</strong></td>' +
-            '<td>' + (d.surveyDate || '<span class="null-cell">—</span>') + '</td>' +
-            '<td><span class="badge badge-green">' + c + ' 棵</span></td>' +
-            '<td>' + (d.notes ? esc(d.notes).substring(0, 30) : '<span class="null-cell">—</span>') + '</td>' +
-            '<td>' +
-            '<button class="btn btn-outline btn-xs" onclick="openProject(\'' + d.id + '\',\'' + esc(d.name) + '\')">🌲</button> ' +
-            '<button class="btn btn-outline btn-xs" onclick="editProject(\'' + d.id + '\')">✏️</button> ' +
-            '<button class="btn btn-danger btn-xs" onclick="confirmDeleteProject(\'' + d.id + '\',\'' + esc(d.name) + '\')">🗑</button>' +
-            '</td></tr>';
-    }).join('');
+        var tr = document.createElement('tr');
+
+        // Col 1: Name (clickable)
+        var td1 = document.createElement('td');
+        var strong = document.createElement('strong');
+        strong.textContent = '📁 ' + (d.name || '');
+        strong.style.cssText = 'color:#a5b4fc;cursor:pointer';
+        strong.addEventListener('click', function() { openProject(d.id, d.name); });
+        td1.appendChild(strong);
+        tr.appendChild(td1);
+
+        // Col 2: Date
+        var td2 = document.createElement('td');
+        if (d.surveyDate) { td2.textContent = d.surveyDate; }
+        else { td2.innerHTML = '<span class="null-cell">—</span>'; }
+        tr.appendChild(td2);
+
+        // Col 3: Tree count badge
+        var td3 = document.createElement('td');
+        var badge = document.createElement('span');
+        badge.className = 'badge badge-green';
+        badge.textContent = c + ' 棵';
+        td3.appendChild(badge);
+        tr.appendChild(td3);
+
+        // Col 4: Notes
+        var td4 = document.createElement('td');
+        if (d.notes) { td4.textContent = d.notes.substring(0, 30); }
+        else { td4.innerHTML = '<span class="null-cell">—</span>'; }
+        tr.appendChild(td4);
+
+        // Col 5: Actions
+        var td5 = document.createElement('td');
+        var btn1 = elButton('🌲', 'btn btn-outline btn-xs', function() { openProject(d.id, d.name); });
+        var btn2 = elButton('✏️', 'btn btn-outline btn-xs', function() { editProject(d.id); });
+        var btn3 = elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteProject(d.id, d.name); });
+        td5.appendChild(btn1);
+        td5.appendChild(document.createTextNode(' '));
+        td5.appendChild(btn2);
+        td5.appendChild(document.createTextNode(' '));
+        td5.appendChild(btn3);
+        tr.appendChild(td5);
+
+        tb.appendChild(tr);
+    });
 
     // Card View (mobile)
-    cv.innerHTML = data.map(function(d) {
+    cv.innerHTML = '';
+    data.forEach(function(d) {
         var c = treeCounts[d.id] !== undefined ? treeCounts[d.id] : '...';
-        return '<div class="proj-card" onclick="openProject(\'' + d.id + '\',\'' + esc(d.name) + '\')">' +
-            '<div class="pc-info"><div class="pc-name">📁 ' + esc(d.name) + '</div>' +
-            '<div class="pc-meta"><span>📅 ' + (d.surveyDate || '—') + '</span><span class="badge badge-green">🌲 ' + c + ' 棵</span>' +
-            (d.notes ? '<span>' + esc(d.notes).substring(0, 40) + '</span>' : '') + '</div></div>' +
-            '<div class="pc-actions">' +
-            '<button class="btn btn-outline btn-xs" onclick="event.stopPropagation();editProject(\'' + d.id + '\')">✏️</button>' +
-            '<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();confirmDeleteProject(\'' + d.id + '\',\'' + esc(d.name) + '\')">🗑</button>' +
-            '</div></div>';
-    }).join('');
+        var card = document.createElement('div');
+        card.className = 'proj-card';
+        card.addEventListener('click', function() { openProject(d.id, d.name); });
+
+        var info = document.createElement('div');
+        info.className = 'pc-info';
+
+        var nameDiv = document.createElement('div');
+        nameDiv.className = 'pc-name';
+        nameDiv.textContent = '📁 ' + (d.name || '');
+        info.appendChild(nameDiv);
+
+        var meta = document.createElement('div');
+        meta.className = 'pc-meta';
+
+        var dateSpan = document.createElement('span');
+        dateSpan.textContent = '📅 ' + (d.surveyDate || '—');
+        meta.appendChild(dateSpan);
+
+        var countSpan = document.createElement('span');
+        countSpan.className = 'badge badge-green';
+        countSpan.textContent = '🌲 ' + c + ' 棵';
+        meta.appendChild(countSpan);
+
+        if (d.notes) {
+            var noteSpan = document.createElement('span');
+            noteSpan.textContent = d.notes.substring(0, 40);
+            meta.appendChild(noteSpan);
+        }
+        info.appendChild(meta);
+        card.appendChild(info);
+
+        var actions = document.createElement('div');
+        actions.className = 'pc-actions';
+        actions.appendChild(elButton('✏️', 'btn btn-outline btn-xs', function() { editProject(d.id); }));
+        actions.appendChild(elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteProject(d.id, d.name); }));
+        card.appendChild(actions);
+
+        cv.appendChild(card);
+    });
 
     var totalTrees = Object.values(treeCounts).reduce(function(a, b) {
         return (typeof a === 'number' ? a : 0) + (typeof b === 'number' ? b : 0);
     }, 0);
 
-    document.getElementById('projPagination').innerHTML =
-        '<span>共 ' + totalCount + ' 個專案</span>' +
-        '<div class="flex gap-2">' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.projPage=0;invalidateAndReloadProjects();" ' + (AppState.projPage === 0 ? 'disabled' : '') + '>⏮</button>' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.projPage=Math.max(0,AppState.projPage-1);invalidateAndReloadProjects();" ' + (AppState.projPage === 0 ? 'disabled' : '') + '>◀</button>' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.projPage++;invalidateAndReloadProjects();" ' + ((AppState.projPage + 1) * PAGE_SIZE >= totalCount ? 'disabled' : '') + '>▶</button>' +
-        '</div>';
+    // Pagination
+    var pagEl = document.getElementById('projPagination');
+    pagEl.innerHTML = '';
+    var pagSpan = document.createElement('span');
+    pagSpan.textContent = '共 ' + totalCount + ' 個專案';
+    pagEl.appendChild(pagSpan);
+
+    var pagBtns = document.createElement('div');
+    pagBtns.className = 'flex gap-2';
+
+    var btnFirst = elButton('⏮', 'btn btn-outline btn-xs', function() { AppState.projPage = 0; invalidateAndReloadProjects(); });
+    if (AppState.projPage === 0) btnFirst.disabled = true;
+    pagBtns.appendChild(btnFirst);
+
+    var btnPrev = elButton('◀', 'btn btn-outline btn-xs', function() { AppState.projPage = Math.max(0, AppState.projPage - 1); invalidateAndReloadProjects(); });
+    if (AppState.projPage === 0) btnPrev.disabled = true;
+    pagBtns.appendChild(btnPrev);
+
+    var btnNext = elButton('▶', 'btn btn-outline btn-xs', function() { AppState.projPage++; invalidateAndReloadProjects(); });
+    if ((AppState.projPage + 1) * PAGE_SIZE >= totalCount) btnNext.disabled = true;
+    pagBtns.appendChild(btnNext);
+
+    pagEl.appendChild(pagBtns);
+
     document.getElementById('sProjects').textContent = totalCount;
     document.getElementById('sTrees').textContent = totalTrees;
 }
@@ -243,3 +318,18 @@ function confirmDeleteProject(id, name) {
         showModal('confirmModal');
     }).catch(function(e) { toast('❌ ' + e.message, 'error'); });
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.project = {
+    loadProjects: loadProjects,
+    _loadProjects: _loadProjects,
+    renderProjectsList: renderProjectsList,
+    invalidateAndReloadProjects: invalidateAndReloadProjects,
+    searchProjects: searchProjects,
+    showProjectModal: showProjectModal,
+    editProject: editProject,
+    saveProject: saveProject,
+    confirmDeleteProject: confirmDeleteProject
+};

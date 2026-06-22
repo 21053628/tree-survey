@@ -208,6 +208,24 @@ ALTER TABLE tree_photos
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
 -- ============================================================
+-- 第七部分：Stored Function — 批次取得專案樹木計數
+-- 用途：消除前端 N+1 查詢，一次 SQL 取得多個專案的樹木數量
+-- 前端用法：
+--   const { data } = await supabase.rpc('get_project_tree_counts', { project_ids: [...] });
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION get_project_tree_counts(project_ids UUID[])
+RETURNS TABLE("projectId" UUID, count BIGINT)
+LANGUAGE SQL
+SECURITY DEFINER
+AS $$
+    SELECT trees."projectId", COUNT(*)::BIGINT
+    FROM trees
+    WHERE trees."projectId" = ANY(project_ids)
+    GROUP BY trees."projectId";
+$$;
+
+-- ============================================================
 -- 完成！
 -- 執行後請回到 index.html 重新整理頁面。
 -- 你需要在 Supabase Authentication 頁面手動建立員工帳號：

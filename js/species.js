@@ -206,3 +206,13 @@ function setupSuggest(inputId, wrapId, dataList, autoFillType) {
         if (!wrap.contains(e.target)) { dropdown.classList.remove('show'); }
     }, true);
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.species = {
+    loadSpeciesList: loadSpeciesList,
+    buildSpeciesLists: buildSpeciesLists,
+    initSuggestDropdowns: initSuggestDropdowns,
+    setupSuggest: setupSuggest
+};

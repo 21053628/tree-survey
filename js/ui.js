@@ -202,3 +202,19 @@ async function diagnosis() {
     log('═══ END ═══');
     alert(L.join('\n'));
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.ui = {
+    toast: toast,
+    setStatus: setStatus,
+    closeModal: closeModal,
+    showModal: showModal,
+    goToProjects: goToProjects,
+    openProject: openProject,
+    showListView: showListView,
+    showMapView: showMapView,
+    refreshAll: refreshAll,
+    diagnosis: diagnosis
+};

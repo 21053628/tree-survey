@@ -37,11 +37,11 @@ function todayStr() {
 }
 
 /**
- * 是否為手機裝置（寬度 <= 768px）
+ * 是否為手機裝置（寬度 <= MOBILE_BREAKPOINT_PX）
  * @returns {boolean}
  */
 function isMobile() {
-    return window.innerWidth <= 768;
+    return window.innerWidth <= MOBILE_BREAKPOINT_PX;
 }
 
 /**
@@ -108,37 +108,30 @@ function leafletReady() {
 }
 
 /**
- * Health Condition → Badge HTML
+ * Health Condition → Badge Element（安全 DOM，取代 innerHTML）
  * @param {string|null} v
- * @returns {string} HTML
+ * @returns {HTMLElement}
  */
 function healthBadge(v) {
-    if (!v) return '<span class="null-cell">—</span>';
-    var cls = v.toLowerCase();
-    return '<span class="tc-badge '+cls+'">'+esc(v)+'</span>';
+    return healthBadgeEl(v);
 }
 
 /**
- * Structural Condition → Badge HTML
+ * Structural Condition → Badge Element（安全 DOM，取代 innerHTML）
  * @param {string|null} v
- * @returns {string} HTML
+ * @returns {HTMLElement}
  */
 function structBadge(v) {
-    if (!v) return '<span class="null-cell">—</span>';
-    var cls = v.toLowerCase();
-    return '<span class="tc-badge '+cls+'">'+esc(v)+'</span>';
+    return structBadgeEl(v);
 }
 
 /**
- * Recommendation → Badge HTML
+ * Recommendation → Badge Element（安全 DOM，取代 innerHTML）
  * @param {string|null} v
- * @returns {string} HTML
+ * @returns {HTMLElement}
  */
 function recBadge(v) {
-    if (!v) return '<span class="null-cell">—</span>';
-    var m = {retain:'retain',fell:'fell',transplant:'transplant',prune:'monitor',monitor:'monitor','further investigation':'investigation'};
-    var cls = m[v.toLowerCase()] || '';
-    return '<span class="tc-badge '+cls+'">'+esc(v)+'</span>';
+    return recBadgeEl(v);
 }
 
 /**
@@ -181,3 +174,64 @@ function createCache(ttlMs) {
         }
     };
 }
+
+// ============================================================
+// Supabase 批次載入工具
+// ============================================================
+
+/**
+ * 通用批次載入 — 自動處理 Supabase 分頁，一次撈回全部資料
+ * 消除全專案中重複的 `while(true) { .range(from, from+999) }` 模式
+ *
+ * @param {object} queryBuilder - Supabase query builder（已設定 .select(), .eq() 等條件，不含 .range()）
+ * @param {number} [pageSize=FETCH_PAGE_SIZE] - 每批筆數
+ * @returns {Promise<object[]>} 全部資料陣列；若出錯則回傳空陣列
+ *
+ * @example
+ *   var allTrees = await fetchAllPages(
+ *       AppState.supabase.from('trees').select('*').eq('projectId', pid).order('treeIdNo')
+ *   );
+ */
+async function fetchAllPages(queryBuilder, pageSize) {
+    pageSize = pageSize || FETCH_PAGE_SIZE;
+    var allData = [];
+    var from = 0;
+    try {
+        while (true) {
+            var r = await queryBuilder.range(from, from + pageSize - 1);
+            if (r.error) {
+                console.warn('fetchAllPages error:', r.error.message);
+                break;
+            }
+            if (!r.data || r.data.length === 0) break;
+            allData = allData.concat(r.data);
+            if (r.data.length < pageSize) break;
+            from += pageSize;
+        }
+    } catch(e) {
+        console.error('fetchAllPages exception:', e.message);
+    }
+    return allData;
+}
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.utils = {
+    uuid: uuid,
+    esc: esc,
+    todayStr: todayStr,
+    isMobile: isMobile,
+    canUseGPS: canUseGPS,
+    getProtocolWarningHTML: getProtocolWarningHTML,
+    getGPSDenyGuideHTML: getGPSDenyGuideHTML,
+    sdkReady: sdkReady,
+    xlsxReady: xlsxReady,
+    leafletReady: leafletReady,
+    healthBadge: healthBadge,
+    structBadge: structBadge,
+    recBadge: recBadge,
+    debounce: debounce,
+    createCache: createCache,
+    fetchAllPages: fetchAllPages
+};

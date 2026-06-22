@@ -18,20 +18,12 @@ async function exportProjectTreesExcel() {
     if (!AppState.currentProjectId || !xlsxReady()) { toast('⚠️ Excel library 未載入', 'warning'); return; }
     toast('📥 正在匯出...', 'warning');
     try {
-        var allTrees = [];
-        var from = 0;
-        while (true) {
-            var r = await AppState.supabase.from('trees')
+        var allTrees = await fetchAllPages(
+            AppState.supabase.from('trees')
                 .select('*')
                 .eq('projectId', AppState.currentProjectId)
-                .range(from, from + 999)
-                .order('treeIdNo', { ascending: true });
-            if (r.error) throw r.error;
-            if (!r.data || r.data.length === 0) break;
-            allTrees = allTrees.concat(r.data);
-            if (r.data.length < 1000) break;
-            from += 1000;
-        }
+                .order('treeIdNo', { ascending: true })
+        );
         if (allTrees.length === 0) { toast('⚠️ 冇樹木資料', 'warning'); return; }
 
         /** @type {object[]} */
@@ -74,20 +66,12 @@ async function exportAllProjectsExcel() {
     if (!xlsxReady()) { toast('⚠️ Excel library 未載入', 'warning'); return; }
     toast('📥 正在匯出全部...', 'warning');
     try {
-        // 載入全部專案
-        var allProjects = [];
-        var from = 0;
-        while (true) {
-            var r = await AppState.supabase.from('projects')
+        // 載入全部專案（使用 fetchAllPages）
+        var allProjects = await fetchAllPages(
+            AppState.supabase.from('projects')
                 .select('*')
-                .range(from, from + 999)
-                .order('name', { ascending: true });
-            if (r.error) throw r.error;
-            if (!r.data || r.data.length === 0) break;
-            allProjects = allProjects.concat(r.data);
-            if (r.data.length < 1000) break;
-            from += 1000;
-        }
+                .order('name', { ascending: true })
+        );
 
         var wb = XLSX.utils.book_new();
         /** @type {object[]} */
@@ -96,20 +80,13 @@ async function exportAllProjectsExcel() {
 
         for (var i = 0; i < allProjects.length; i++) {
             var proj = allProjects[i];
-            var allTrees = [];
-            var tf = 0;
-            while (true) {
-                var tr = await AppState.supabase.from('trees')
+            // 載入此專案全部樹木
+            var allTrees = await fetchAllPages(
+                AppState.supabase.from('trees')
                     .select('*')
                     .eq('projectId', proj.id)
-                    .range(tf, tf + 999)
-                    .order('treeIdNo', { ascending: true });
-                if (tr.error) break;
-                if (!tr.data || tr.data.length === 0) break;
-                allTrees = allTrees.concat(tr.data);
-                if (tr.data.length < 1000) break;
-                tf += 1000;
-            }
+                    .order('treeIdNo', { ascending: true })
+            );
             totalTrees += allTrees.length;
             summaryRows.push({
                 '專案名稱': proj.name || '',
@@ -151,3 +128,11 @@ async function exportAllProjectsExcel() {
         toast('❌ ' + e.message, 'error');
     }
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.excel = {
+    exportProjectTreesExcel: exportProjectTreesExcel,
+    exportAllProjectsExcel: exportAllProjectsExcel
+};

@@ -290,3 +290,18 @@ function locateMe() {
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
     );
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.gps = {
+    showGPSDialog: showGPSDialog,
+    doCaptureGPS: doCaptureGPS,
+    doIPGeolocation: doIPGeolocation,
+    openMapPicker: openMapPicker,
+    confirmMapPicker: confirmMapPicker,
+    closeMapPicker: closeMapPicker,
+    switchMainLayer: switchMainLayer,
+    switchPickerLayer: switchPickerLayer,
+    locateMe: locateMe
+};

@@ -90,3 +90,28 @@ async function safeQuery(queryPromise, context) {
         return { data: null, error: e };
     }
 }
+
+/**
+ * 安全查詢 + 自動解包 data 的簡寫
+ * 用法：var projects = await q(AppState.supabase.from('projects').select('*'), '載入專案');
+ * 若出錯則回傳 null，呼叫端可用 if (!result) 處理
+ *
+ * @param {Promise} queryPromise - Supabase 查詢 Promise
+ * @param {string} [context=''] - 操作描述
+ * @returns {Promise<*|null>} 解包後的 data，或 null（發生錯誤時）
+ */
+async function q(queryPromise, context) {
+    var result = await safeQuery(queryPromise, context);
+    if (result.error) return null;
+    return result.data;
+}
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.supabase = {
+    initSupabase: initSupabase,
+    handleSupabaseError: handleSupabaseError,
+    safeQuery: safeQuery,
+    q: q
+};

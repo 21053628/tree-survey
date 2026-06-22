@@ -210,3 +210,19 @@ function initAuth() {
         onUnauthenticated();
     }
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.auth = {
+    showLoginScreen: showLoginScreen,
+    hideLoginScreen: hideLoginScreen,
+    onAuthenticated: onAuthenticated,
+    onUnauthenticated: onUnauthenticated,
+    handleLogin: handleLogin,
+    handleLogout: handleLogout,
+    showLoginError: showLoginError,
+    hideLoginError: hideLoginError,
+    setLoginLoading: setLoginLoading,
+    initAuth: initAuth
+};

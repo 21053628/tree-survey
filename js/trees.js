@@ -32,7 +32,9 @@ async function _loadProjectTrees() {
     var cacheKey = 'trees_' + AppState.currentProjectId + '_' + AppState.treePage + '_' + ((document.getElementById('treeSearch')?.value || '').trim());
     var cached = AppState.treesCache.get(cacheKey);
     if (cached) {
-        renderTreesList(cached.data, cached.count);
+        _renderTreeTable(cached.data);
+        _renderTreeCards(cached.data);
+        _renderTreePagination(cached.count);
         AppState._loadingTrees = false;
         return;
     }
@@ -79,73 +81,232 @@ async function _loadProjectTrees() {
 
         // 存入快取
         AppState.treesCache.set(cacheKey, { data: r.data, count: count });
-        renderTreesList(r.data, count);
+        _renderTreeTable(r.data);
+        _renderTreeCards(r.data);
+        _renderTreePagination(count);
     } catch(e) {
         tb.innerHTML = '<tr><td colspan="10" class="empty" style="color:#f87171;">❌ ' + e.message + '</td></tr>';
     }
     AppState._loadingTrees = false;
 }
 
+// ============================================================
+// 渲染輔助函式（拆分自 renderTreesList）
+// ============================================================
+
 /**
- * 渲染樹木列表到 DOM
- * @param {object[]} data
- * @param {number} count
+ * 是否有 GPS 座標
+ * @param {object} d - 樹木資料
+ * @returns {boolean}
  */
-function renderTreesList(data, count) {
+function _hasCoords(d) {
+    return d.latitude != null && d.longitude != null;
+}
+
+/**
+ * 渲染樹木表格
+ * @param {object[]} data
+ */
+function _renderTreeTable(data) {
     var tb = document.getElementById('treesBody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    var fragment = document.createDocumentFragment();
+    data.forEach(function(d) {
+        var tr = document.createElement('tr');
+
+        // Col: Tree ID
+        var tdId = document.createElement('td');
+        var strong = document.createElement('strong');
+        strong.textContent = d.treeIdNo || '—';
+        strong.style.color = '#fbbf24';
+        tdId.appendChild(strong);
+        tr.appendChild(tdId);
+
+        // Col: Botanical Name
+        var tdBot = document.createElement('td');
+        tdBot.style.cssText = 'font-style:italic;font-size:.78rem';
+        tdBot.textContent = d.botanicalName || '—';
+        tr.appendChild(tdBot);
+
+        // Col: Chinese Name
+        var tdChi = document.createElement('td');
+        tdChi.textContent = d.chineseName || '—';
+        tr.appendChild(tdChi);
+
+        // Col: DBH
+        var tdDbh = document.createElement('td');
+        if (d.trunkDiameter) { tdDbh.textContent = d.trunkDiameter; }
+        else { tdDbh.innerHTML = '<span class="null-cell">—</span>'; }
+        tr.appendChild(tdDbh);
+
+        // Col: Height
+        var tdH = document.createElement('td');
+        if (d.overallHeight) { tdH.textContent = d.overallHeight; }
+        else { tdH.innerHTML = '<span class="null-cell">—</span>'; }
+        tr.appendChild(tdH);
+
+        // Col: Crown
+        var tdCrown = document.createElement('td');
+        if (d.crownSpread) { tdCrown.textContent = d.crownSpread; }
+        else { tdCrown.innerHTML = '<span class="null-cell">—</span>'; }
+        tr.appendChild(tdCrown);
+
+        // Col: Health
+        var tdHealth = document.createElement('td');
+        tdHealth.appendChild(healthBadge(d.healthCondition));
+        tr.appendChild(tdHealth);
+
+        // Col: Structural
+        var tdStruct = document.createElement('td');
+        tdStruct.appendChild(structBadge(d.structuralCondition));
+        tr.appendChild(tdStruct);
+
+        // Col: Recommendation
+        var tdRec = document.createElement('td');
+        tdRec.appendChild(recBadge(d.recommendation));
+        tr.appendChild(tdRec);
+
+        // Col: Actions
+        var tdAct = document.createElement('td');
+        if (_hasCoords(d)) {
+            var btnMap = elButton('📍', 'btn btn-map-go', function() { focusTreeOnMap(d.id); });
+            tdAct.appendChild(btnMap);
+            tdAct.appendChild(document.createTextNode(' '));
+        }
+        var btnEdit = elButton('✏️', 'btn btn-outline btn-xs', function() { editTree(d.id); });
+        var btnDel = elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteTree(d.id, d.treeIdNo || d.id); });
+        tdAct.appendChild(btnEdit);
+        tdAct.appendChild(document.createTextNode(' '));
+        tdAct.appendChild(btnDel);
+        tr.appendChild(tdAct);
+
+        fragment.appendChild(tr);
+    });
+    tb.appendChild(fragment);
+}
+
+/**
+ * 渲染樹木卡片（手機版）
+ * @param {object[]} data
+ */
+function _renderTreeCards(data) {
     var cv = document.getElementById('treeCardsView');
+    if (!cv) return;
+    cv.innerHTML = '';
+    var fragment = document.createDocumentFragment();
+    data.forEach(function(d) {
+        var card = document.createElement('div');
+        card.className = 'tree-card';
+        card.addEventListener('click', function() { editTree(d.id); });
 
-    /** @param {object} d @returns {boolean} */
-    var hasCoords = function(d) { return d.latitude != null && d.longitude != null; };
+        // Row 1: ID + Recommendation badge
+        var row1 = document.createElement('div');
+        row1.className = 'tc-row';
+        var idSpan = document.createElement('span');
+        idSpan.className = 'tc-id';
+        idSpan.textContent = '🔢 ' + (d.treeIdNo || '—');
+        row1.appendChild(idSpan);
+        row1.appendChild(recBadge(d.recommendation));
+        card.appendChild(row1);
 
-    // Table View
-    tb.innerHTML = data.map(function(d) {
-        return '<tr>' +
-            '<td><strong style="color:#fbbf24;">' + esc(d.treeIdNo || '—') + '</strong></td>' +
-            '<td style="font-style:italic;font-size:.78rem;">' + esc(d.botanicalName || '—') + '</td>' +
-            '<td>' + esc(d.chineseName || '—') + '</td>' +
-            '<td>' + (d.trunkDiameter || '<span class="null-cell">—</span>') + '</td>' +
-            '<td>' + (d.overallHeight || '<span class="null-cell">—</span>') + '</td>' +
-            '<td>' + (d.crownSpread || '<span class="null-cell">—</span>') + '</td>' +
-            '<td>' + healthBadge(d.healthCondition) + '</td>' +
-            '<td>' + structBadge(d.structuralCondition) + '</td>' +
-            '<td>' + recBadge(d.recommendation) + '</td>' +
-            '<td>' +
-            (hasCoords(d) ? '<button class="btn btn-map-go" onclick="event.stopPropagation();focusTreeOnMap(\'' + d.id + '\')">📍</button> ' : '') +
-            '<button class="btn btn-outline btn-xs" onclick="editTree(\'' + d.id + '\')">✏️</button> ' +
-            '<button class="btn btn-danger btn-xs" onclick="confirmDeleteTree(\'' + d.id + '\',\'' + esc(d.treeIdNo || d.id) + '\')">🗑</button>' +
-            '</td></tr>';
-    }).join('');
+        // Row 2: Botanical Name
+        var row2 = document.createElement('div');
+        row2.className = 'tc-row';
+        var spSpan = document.createElement('span');
+        spSpan.className = 'tc-species';
+        var italic = document.createElement('i');
+        italic.textContent = d.botanicalName || '—';
+        spSpan.appendChild(italic);
+        row2.appendChild(spSpan);
+        card.appendChild(row2);
 
-    // Card View (mobile)
-    cv.innerHTML = data.map(function(d) {
+        // Row 3: Chinese Name
+        var row3 = document.createElement('div');
+        row3.className = 'tc-row';
+        var chiSpan = document.createElement('span');
+        chiSpan.style.fontSize = '.85rem';
+        chiSpan.textContent = d.chineseName || '—';
+        row3.appendChild(chiSpan);
+        card.appendChild(row3);
+
+        // Metrics row
         var metrics = [];
-        if (d.trunkDiameter) metrics.push('📐 DBH: ' + esc(d.trunkDiameter) + 'mm');
-        if (d.overallHeight) metrics.push('📏 H: ' + esc(d.overallHeight) + 'm');
-        if (d.crownSpread) metrics.push('🌳 Crown: ' + esc(d.crownSpread) + 'm');
-        var gps = '';
-        if (hasCoords(d)) gps = '<div class="tc-gps">📍 ' + Number(d.latitude).toFixed(5) + ', ' + Number(d.longitude).toFixed(5) + '</div>';
-        return '<div class="tree-card" onclick="editTree(\'' + d.id + '\')">' +
-            '<div class="tc-row"><span class="tc-id">🔢 ' + esc(d.treeIdNo || '—') + '</span>' + recBadge(d.recommendation) + '</div>' +
-            '<div class="tc-row"><span class="tc-species"><i>' + esc(d.botanicalName || '—') + '</i></span></div>' +
-            '<div class="tc-row"><span style="font-size:.85rem;">' + esc(d.chineseName || '—') + '</span></div>' +
-            (metrics.length > 0 ? '<div class="tc-metrics">' + metrics.map(function(m) { return '<span>' + m + '</span>'; }).join('') + '</div>' : '') +
-            '<div class="tc-row" style="margin-top:6px;">' + healthBadge(d.healthCondition) + ' ' + structBadge(d.structuralCondition) + '</div>' +
-            gps +
-            '<div class="tc-actions">' +
-            (hasCoords(d) ? '<button class="btn btn-map-go" onclick="event.stopPropagation();focusTreeOnMap(\'' + d.id + '\')">📍 地圖</button>' : '') +
-            '<button class="btn btn-outline btn-xs" onclick="event.stopPropagation();editTree(\'' + d.id + '\')">✏️ 編輯</button>' +
-            '<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();confirmDeleteTree(\'' + d.id + '\',\'' + esc(d.treeIdNo || d.id) + '\')">🗑</button>' +
-            '</div></div>';
-    }).join('');
+        if (d.trunkDiameter) metrics.push('📐 DBH: ' + d.trunkDiameter + 'mm');
+        if (d.overallHeight) metrics.push('📏 H: ' + d.overallHeight + 'm');
+        if (d.crownSpread) metrics.push('🌳 Crown: ' + d.crownSpread + 'm');
+        if (metrics.length > 0) {
+            var metRow = document.createElement('div');
+            metRow.className = 'tc-metrics';
+            metrics.forEach(function(m) {
+                var s = document.createElement('span');
+                s.textContent = m;
+                metRow.appendChild(s);
+            });
+            card.appendChild(metRow);
+        }
 
-    document.getElementById('treePagination').innerHTML =
-        '<span>共 ' + count + ' 棵樹</span>' +
-        '<div class="flex gap-2">' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.treePage=0;invalidateAndReloadTrees();" ' + (AppState.treePage === 0 ? 'disabled' : '') + '>⏮</button>' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.treePage=Math.max(0,AppState.treePage-1);invalidateAndReloadTrees();" ' + (AppState.treePage === 0 ? 'disabled' : '') + '>◀</button>' +
-        '<button class="btn btn-outline btn-xs" onclick="AppState.treePage++;invalidateAndReloadTrees();" ' + ((AppState.treePage + 1) * PAGE_SIZE >= count ? 'disabled' : '') + '>▶</button>' +
-        '</div>';
+        // Row: Health + Structural badges
+        var rowBadges = document.createElement('div');
+        rowBadges.className = 'tc-row';
+        rowBadges.style.marginTop = '6px';
+        rowBadges.appendChild(healthBadge(d.healthCondition));
+        rowBadges.appendChild(document.createTextNode(' '));
+        rowBadges.appendChild(structBadge(d.structuralCondition));
+        card.appendChild(rowBadges);
+
+        // GPS coordinates
+        if (_hasCoords(d)) {
+            var gpsDiv = document.createElement('div');
+            gpsDiv.className = 'tc-gps';
+            gpsDiv.textContent = '📍 ' + Number(d.latitude).toFixed(5) + ', ' + Number(d.longitude).toFixed(5);
+            card.appendChild(gpsDiv);
+        }
+
+        // Actions
+        var actions = document.createElement('div');
+        actions.className = 'tc-actions';
+        if (_hasCoords(d)) {
+            actions.appendChild(elButton('📍 地圖', 'btn btn-map-go', function() { focusTreeOnMap(d.id); }));
+        }
+        actions.appendChild(elButton('✏️ 編輯', 'btn btn-outline btn-xs', function() { editTree(d.id); }));
+        actions.appendChild(elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteTree(d.id, d.treeIdNo || d.id); }));
+        card.appendChild(actions);
+
+        fragment.appendChild(card);
+    });
+    cv.appendChild(fragment);
+}
+
+/**
+ * 渲染樹木分頁控制
+ * @param {number} count - 總筆數
+ */
+function _renderTreePagination(count) {
+    var el2 = document.getElementById('treePagination');
+    if (!el2) return;
+    el2.innerHTML = '';
+
+    var span = document.createElement('span');
+    span.textContent = '共 ' + count + ' 棵樹';
+    el2.appendChild(span);
+
+    var btnsDiv = document.createElement('div');
+    btnsDiv.className = 'flex gap-2';
+
+    var btnFirst = elButton('⏮', 'btn btn-outline btn-xs', function() { AppState.treePage = 0; invalidateAndReloadTrees(); });
+    if (AppState.treePage === 0) btnFirst.disabled = true;
+    btnsDiv.appendChild(btnFirst);
+
+    var btnPrev = elButton('◀', 'btn btn-outline btn-xs', function() { AppState.treePage = Math.max(0, AppState.treePage - 1); invalidateAndReloadTrees(); });
+    if (AppState.treePage === 0) btnPrev.disabled = true;
+    btnsDiv.appendChild(btnPrev);
+
+    var btnNext = elButton('▶', 'btn btn-outline btn-xs', function() { AppState.treePage++; invalidateAndReloadTrees(); });
+    if ((AppState.treePage + 1) * PAGE_SIZE >= count) btnNext.disabled = true;
+    btnsDiv.appendChild(btnNext);
+
+    el2.appendChild(btnsDiv);
 }
 
 /**
@@ -166,6 +327,44 @@ function searchTrees() {
 }
 
 // ============================================================
+// 樹木 Modal 表單輔助
+// ============================================================
+
+/**
+ * 重置樹木表單欄位
+ * @param {boolean} isEdit - 是否為編輯模式
+ */
+function _resetTreeForm(isEdit) {
+    var titleEl = document.getElementById('treeModalTitle');
+    titleEl.textContent = isEdit ? '✏️ 編輯樹木' : '🌲 新增樹木 — ' + AppState.currentProjectName;
+    [
+        'tree_treeIdNo', 'tree_botanicalName', 'tree_chineseName', 'tree_trunkDiameter',
+        'tree_overallHeight', 'tree_crownSpread', 'tree_healthCondition', 'tree_structuralCondition',
+        'tree_amenityValue', 'tree_observedDefects', 'tree_recommendation', 'tree_remarks',
+        'tree_latitude', 'tree_longitude'
+    ].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+    var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
+    _setupGPSWarning();
+    AppState._photoData = [];
+    AppState._photoCurrentTreeId = null;
+    if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+}
+
+/**
+ * 設定 GPS 協議警告區塊
+ */
+function _setupGPSWarning() {
+    var warn = document.getElementById('gpsProtocolWarn');
+    if (!warn) return;
+    if (!canUseGPS()) {
+        warn.innerHTML = getProtocolWarningHTML();
+        warn.classList.remove('hidden');
+    } else {
+        warn.classList.add('hidden');
+    }
+}
+
+// ============================================================
 // 樹木 CRUD
 // ============================================================
 
@@ -174,25 +373,10 @@ function searchTrees() {
  */
 function showTreeModal() {
     if (!AppState.currentProjectId) { toast('⚠️ 請先選擇專案', 'warning'); return; }
-    document.getElementById('treeModalTitle').textContent = '🌲 新增樹木 — ' + AppState.currentProjectName;
     document.getElementById('tree_editId').value = '';
-    [
-        'tree_treeIdNo', 'tree_botanicalName', 'tree_chineseName', 'tree_trunkDiameter',
-        'tree_overallHeight', 'tree_crownSpread', 'tree_healthCondition', 'tree_structuralCondition',
-        'tree_amenityValue', 'tree_observedDefects', 'tree_recommendation', 'tree_remarks',
-        'tree_latitude', 'tree_longitude'
-    ].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
-    var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
-    var warn = document.getElementById('gpsProtocolWarn');
-    if (warn) {
-        if (!canUseGPS()) { warn.innerHTML = getProtocolWarningHTML(); warn.classList.remove('hidden'); }
-        else { warn.classList.add('hidden'); }
-    }
-    AppState._photoData = [];
-    AppState._photoCurrentTreeId = null;
-    if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+    _resetTreeForm(false);
     showModal('treeModal');
-    setTimeout(function() { if (typeof initSuggestDropdowns === 'function') initSuggestDropdowns(); }, 200);
+    setTimeout(function() { if (typeof initSuggestDropdowns === 'function') initSuggestDropdowns(); }, DELAY_SUGGEST_INIT);
 }
 
 /**
@@ -204,7 +388,6 @@ function editTree(id) {
     AppState.supabase.from('trees').select('*').eq('id', id).single().then(function(r) {
         if (r.error) { toast('❌ ' + r.error.message, 'error'); return; }
         var d = r.data;
-        document.getElementById('treeModalTitle').textContent = '✏️ 編輯樹木';
         document.getElementById('tree_editId').value = d.id;
         document.getElementById('tree_treeIdNo').value = d.treeIdNo || '';
         document.getElementById('tree_botanicalName').value = d.botanicalName || '';
@@ -221,19 +404,16 @@ function editTree(id) {
         document.getElementById('tree_latitude').value = (d.latitude != null) ? d.latitude : '';
         document.getElementById('tree_longitude').value = (d.longitude != null) ? d.longitude : '';
         document.getElementById('tree_editUpdatedAt').value = d.updatedAt || '';
+        document.getElementById('treeModalTitle').textContent = '✏️ 編輯樹木';
         var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
-        var warn = document.getElementById('gpsProtocolWarn');
-        if (warn) {
-            if (!canUseGPS()) { warn.innerHTML = getProtocolWarningHTML(); warn.classList.remove('hidden'); }
-            else { warn.classList.add('hidden'); }
-        }
+        _setupGPSWarning();
         AppState._photoData = [];
         AppState._photoCurrentTreeId = d.id;
         showModal('treeModal');
         setTimeout(function() {
             if (typeof initSuggestDropdowns === 'function') initSuggestDropdowns();
             if (typeof loadTreePhotos === 'function') loadTreePhotos(d.id);
-        }, 200);
+        }, DELAY_SUGGEST_INIT);
     });
 }
 
@@ -329,3 +509,21 @@ if (confirmBtnEl) {
         }
     });
 }
+
+// ============================================================
+// Export to TreeApp namespace
+// ============================================================
+TreeApp.tree = {
+    loadProjectTrees: loadProjectTrees,
+    _loadProjectTrees: _loadProjectTrees,
+    _hasCoords: _hasCoords,
+    _renderTreeTable: _renderTreeTable,
+    _renderTreeCards: _renderTreeCards,
+    _renderTreePagination: _renderTreePagination,
+    invalidateAndReloadTrees: invalidateAndReloadTrees,
+    searchTrees: searchTrees,
+    showTreeModal: showTreeModal,
+    editTree: editTree,
+    saveTree: saveTree,
+    confirmDeleteTree: confirmDeleteTree
+};
