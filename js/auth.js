@@ -98,9 +98,11 @@ async function handleLogin() {
     setLoginLoading(true);
     hideLoginError();
     try {
+        console.log('🔐 Attempting login for:', email);
         const result = await supabase.auth.signInWithPassword({ email: email, password: password });
         if (result.error) {
             let msg = result.error.message || '登入失敗';
+            console.error('🔐 Login API error:', result.error);
             if (msg.indexOf('Invalid login credentials') >= 0 || msg.indexOf('invalid') >= 0) msg = '❌ 電郵或密碼錯誤，請再試';
             else if (msg.indexOf('Email not confirmed') >= 0) msg = '📧 請先到電郵信箱確認註冊';
             else msg = '❌ ' + msg;
@@ -108,8 +110,12 @@ async function handleLogin() {
             setLoginLoading(false);
             return;
         }
-        // onAuthStateChange will call onAuthenticated
+        // 登入成功：恢復按鈕 + 主動切換畫面（不單靠 onAuthStateChange）
+        console.log('🔐 Login success:', result.data.user?.email);
+        setLoginLoading(false);
+        onAuthenticated(result.data.user);
     } catch(e) {
+        console.error('🔐 Login exception:', e);
         showLoginError('❌ 連線失敗：' + (e.message || '請檢查網絡'));
         setLoginLoading(false);
     }
@@ -139,6 +145,7 @@ async function handleLogout() {
  * @param {string} msg
  */
 function showLoginError(msg) {
+    console.error('🔐 Login error:', msg);
     const el = document.getElementById('loginError');
     if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
