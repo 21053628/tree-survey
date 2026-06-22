@@ -46,128 +46,107 @@ CREATE INDEX IF NOT EXISTS idx_tree_photos_project_id ON tree_photos(project_id)
 CREATE INDEX IF NOT EXISTS idx_tree_photos_created_at ON tree_photos(created_at DESC);
 
 -- ============================================================
--- 第三部分：建立 RLS Policies（安全政策）
--- 只允許「已登入的用戶（authenticated）」進行所有操作
--- 匿名路人（anon / public）一律拒絕存取
+-- 第三部分：多租戶資料隔離 (Multi-Tenant Isolation)
+-- 加入 user_id 欄位
+-- ============================================================
+
+-- 為 projects 加入 user_id 欄位
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 為 trees 加入 user_id 欄位
+ALTER TABLE trees ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 為 tree_photos 加入 user_id 欄位
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 建立索引加速 user_id 查詢
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_trees_user_id ON trees(user_id);
+CREATE INDEX IF NOT EXISTS idx_tree_photos_user_id ON tree_photos(user_id);
+
+-- ============================================================
+-- 第四部分：RLS Policies（安全政策）
+-- 只允許用戶讀寫自己的資料（user_id = auth.uid()）
 -- ============================================================
 
 -- --- projects 資料表 ---
 
--- 已登入用戶可以讀取所有 projects
-DROP POLICY IF EXISTS "Authenticated users can read projects" ON projects;
-CREATE POLICY "Authenticated users can read projects"
-    ON projects
-    FOR SELECT
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can read own projects" ON projects;
+CREATE POLICY "Users can read own projects"
+    ON projects FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
 
--- 已登入用戶可以新增 projects
-DROP POLICY IF EXISTS "Authenticated users can insert projects" ON projects;
-CREATE POLICY "Authenticated users can insert projects"
-    ON projects
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can insert own projects" ON projects;
+CREATE POLICY "Users can insert own projects"
+    ON projects FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以更新 projects
-DROP POLICY IF EXISTS "Authenticated users can update projects" ON projects;
-CREATE POLICY "Authenticated users can update projects"
-    ON projects
-    FOR UPDATE
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can update own projects" ON projects;
+CREATE POLICY "Users can update own projects"
+    ON projects FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以刪除 projects
-DROP POLICY IF EXISTS "Authenticated users can delete projects" ON projects;
-CREATE POLICY "Authenticated users can delete projects"
-    ON projects
-    FOR DELETE
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can delete own projects" ON projects;
+CREATE POLICY "Users can delete own projects"
+    ON projects FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
 
 -- --- trees 資料表 ---
 
--- 已登入用戶可以讀取所有 trees
-DROP POLICY IF EXISTS "Authenticated users can read trees" ON trees;
-CREATE POLICY "Authenticated users can read trees"
-    ON trees
-    FOR SELECT
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can read own trees" ON trees;
+CREATE POLICY "Users can read own trees"
+    ON trees FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
 
--- 已登入用戶可以新增 trees
-DROP POLICY IF EXISTS "Authenticated users can insert trees" ON trees;
-CREATE POLICY "Authenticated users can insert trees"
-    ON trees
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can insert own trees" ON trees;
+CREATE POLICY "Users can insert own trees"
+    ON trees FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以更新 trees
-DROP POLICY IF EXISTS "Authenticated users can update trees" ON trees;
-CREATE POLICY "Authenticated users can update trees"
-    ON trees
-    FOR UPDATE
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can update own trees" ON trees;
+CREATE POLICY "Users can update own trees"
+    ON trees FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以刪除 trees
-DROP POLICY IF EXISTS "Authenticated users can delete trees" ON trees;
-CREATE POLICY "Authenticated users can delete trees"
-    ON trees
-    FOR DELETE
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can delete own trees" ON trees;
+CREATE POLICY "Users can delete own trees"
+    ON trees FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
 
 -- --- tree_photos 資料表 ---
 
--- 已登入用戶可以讀取所有 tree_photos
-DROP POLICY IF EXISTS "Authenticated users can read tree_photos" ON tree_photos;
-CREATE POLICY "Authenticated users can read tree_photos"
-    ON tree_photos
-    FOR SELECT
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can read own tree_photos" ON tree_photos;
+CREATE POLICY "Users can read own tree_photos"
+    ON tree_photos FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
 
--- 已登入用戶可以新增 tree_photos
-DROP POLICY IF EXISTS "Authenticated users can insert tree_photos" ON tree_photos;
-CREATE POLICY "Authenticated users can insert tree_photos"
-    ON tree_photos
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can insert own tree_photos" ON tree_photos;
+CREATE POLICY "Users can insert own tree_photos"
+    ON tree_photos FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以更新 tree_photos
-DROP POLICY IF EXISTS "Authenticated users can update tree_photos" ON tree_photos;
-CREATE POLICY "Authenticated users can update tree_photos"
-    ON tree_photos
-    FOR UPDATE
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can update own tree_photos" ON tree_photos;
+CREATE POLICY "Users can update own tree_photos"
+    ON tree_photos FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- 已登入用戶可以刪除 tree_photos
-DROP POLICY IF EXISTS "Authenticated users can delete tree_photos" ON tree_photos;
-CREATE POLICY "Authenticated users can delete tree_photos"
-    ON tree_photos
-    FOR DELETE
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "Users can delete own tree_photos" ON tree_photos;
+CREATE POLICY "Users can delete own tree_photos"
+    ON tree_photos FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
 
 -- --- species_list 資料表（唯讀，已登入用戶才可查詢）---
 
--- 已登入用戶可以唯讀 species_list
-DROP POLICY IF EXISTS "Authenticated users can read species_list" ON species_list;
-CREATE POLICY "Authenticated users can read species_list"
-    ON species_list
-    FOR SELECT
-    TO authenticated
+DROP POLICY IF EXISTS "Users can read species_list" ON species_list;
+CREATE POLICY "Users can read species_list"
+    ON species_list FOR SELECT TO authenticated
     USING (true);
 
 -- ============================================================
--- 第四部分：Storage Bucket 設定（需手動操作）
+-- 第五部分：Storage Bucket 設定（需手動操作）
 -- ============================================================
 
 /*
@@ -208,96 +187,6 @@ CREATE POLICY "Authenticated users can read species_list"
  */
 
 -- ============================================================
--- 第五部分：多租戶資料隔離 (Multi-Tenant Isolation)
--- ============================================================
-
--- 為 projects 加入 user_id 欄位
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
-
--- 為 trees 加入 user_id 欄位
-ALTER TABLE trees ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
-
--- 為 tree_photos 加入 user_id 欄位
-ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
-
--- 建立索引加速 user_id 查詢
-CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
-CREATE INDEX IF NOT EXISTS idx_trees_user_id ON trees(user_id);
-CREATE INDEX IF NOT EXISTS idx_tree_photos_user_id ON tree_photos(user_id);
-
--- 重建所有 RLS Policy，加入 user_id 過濾
--- （DROP 舊的 USING (true) 版本，重建為 user_id = auth.uid()）
-
--- --- projects ---
-DROP POLICY IF EXISTS "Authenticated users can read projects" ON projects;
-DROP POLICY IF EXISTS "Authenticated users can insert projects" ON projects;
-DROP POLICY IF EXISTS "Authenticated users can update projects" ON projects;
-DROP POLICY IF EXISTS "Authenticated users can delete projects" ON projects;
-
-CREATE POLICY "Users can read own projects"
-    ON projects FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert own projects"
-    ON projects FOR INSERT TO authenticated
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own projects"
-    ON projects FOR UPDATE TO authenticated
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can delete own projects"
-    ON projects FOR DELETE TO authenticated
-    USING (user_id = auth.uid());
-
--- --- trees ---
-DROP POLICY IF EXISTS "Authenticated users can read trees" ON trees;
-DROP POLICY IF EXISTS "Authenticated users can insert trees" ON trees;
-DROP POLICY IF EXISTS "Authenticated users can update trees" ON trees;
-DROP POLICY IF EXISTS "Authenticated users can delete trees" ON trees;
-
-CREATE POLICY "Users can read own trees"
-    ON trees FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert own trees"
-    ON trees FOR INSERT TO authenticated
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own trees"
-    ON trees FOR UPDATE TO authenticated
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can delete own trees"
-    ON trees FOR DELETE TO authenticated
-    USING (user_id = auth.uid());
-
--- --- tree_photos ---
-DROP POLICY IF EXISTS "Authenticated users can read tree_photos" ON tree_photos;
-DROP POLICY IF EXISTS "Authenticated users can insert tree_photos" ON tree_photos;
-DROP POLICY IF EXISTS "Authenticated users can update tree_photos" ON tree_photos;
-DROP POLICY IF EXISTS "Authenticated users can delete tree_photos" ON tree_photos;
-
-CREATE POLICY "Users can read own tree_photos"
-    ON tree_photos FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert own tree_photos"
-    ON tree_photos FOR INSERT TO authenticated
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own tree_photos"
-    ON tree_photos FOR UPDATE TO authenticated
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can delete own tree_photos"
-    ON tree_photos FOR DELETE TO authenticated
-    USING (user_id = auth.uid());
-
--- ============================================================
 -- 第六部分：CASCADE 外鍵約束
 -- ============================================================
 
@@ -328,5 +217,5 @@ ALTER TABLE tree_photos
 -- 1. 舊有資料可能沒有 user_id，你可以用以下 SQL 將它們指定給特定用戶：
 --    UPDATE projects SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
 --    UPDATE trees SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
--- 2. 到 Supabase Storage 也要加 RLS policy（見第四部分註解）
+-- 2. 到 Supabase Storage 也要加 RLS policy（見第五部分註解）
 -- ============================================================
