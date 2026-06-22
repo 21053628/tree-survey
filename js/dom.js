@@ -125,7 +125,7 @@ function structBadgeEl(v) {
  */
 function recBadgeEl(v) {
     if (!v) return elBadge(null, '');
-    var m = {retain:'retain',fell:'fell',transplant:'transplant',prune:'monitor',monitor:'monitor','further investigation':'investigation'};
+    var m = {retain:'retain',fell:'fell',transplant:'transplant',prune:'prune',monitor:'monitor','further investigation':'investigation'};
     var cls = m[(v || '').toLowerCase()] || '';
     return elBadge(v, cls);
 }

@@ -131,7 +131,21 @@ function setupSuggest(inputId, wrapId, dataList, autoFillType) {
                 div.className = 'suggest-item';
                 if (filter && filter.length > 0) {
                     var esc2 = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    div.innerHTML = item.replace(new RegExp('(' + esc2 + ')', 'gi'), '<span class="hl">$1</span>');
+                    var regex = new RegExp('(' + esc2 + ')', 'gi');
+                    var match = regex.exec(item);
+                    if (match) {
+                        var mIdx = match.index;
+                        var before = document.createTextNode(item.substring(0, mIdx));
+                        div.appendChild(before);
+                        var hl = document.createElement('span');
+                        hl.className = 'hl';
+                        hl.textContent = match[1];
+                        div.appendChild(hl);
+                        var after = document.createTextNode(item.substring(mIdx + match[1].length));
+                        div.appendChild(after);
+                    } else {
+                        div.textContent = item;
+                    }
                 } else {
                     div.textContent = item;
                 }

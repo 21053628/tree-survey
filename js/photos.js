@@ -175,7 +175,7 @@ async function processAndUploadPhoto(file) {
         }
     }
 
-    // 壓縮產生縮圖
+    // 壓縮產生大圖 + 縮圖
     var compressed = await compressImage(blob, PHOTO_MAX_DIM, PHOTO_QUALITY);
     var thumb = await compressImage(blob, THUMB_MAX_DIM, THUMB_QUALITY);
 
@@ -184,8 +184,9 @@ async function processAndUploadPhoto(file) {
     if (ext === 'heic' || ext === 'heif') ext = 'jpg';
     var fileName = uuid() + '.' + ext;
     var storagePath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/' + fileName;
+    var thumbPath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/thumb_' + fileName;
 
-    // 上傳到 Supabase Storage
+    // 並行上傳大圖 + 縮圖到 Supabase Storage
     var upResult = await AppState.supabase.storage.from('tree-photos').upload(storagePath, compressed, {
         contentType: 'image/jpeg',
         upsert: false
@@ -194,6 +195,16 @@ async function processAndUploadPhoto(file) {
         console.warn('Storage upload err:', upResult.error.message);
         toast('⚠️ 請先建立 Supabase Storage bucket: tree-photos', 'warning');
         throw new Error('Storage upload failed: ' + upResult.error.message);
+    }
+    // 上傳縮圖（失敗唔影響主流程）
+    try {
+        await AppState.supabase.storage.from('tree-photos').upload(thumbPath, thumb, {
+            contentType: 'image/jpeg',
+            upsert: false
+        });
+    } catch(e) {
+        console.warn('Thumb upload err (non-fatal):', e.message);
+        thumbPath = storagePath;
     }
 
     // 插入 tree_photos 記錄
@@ -207,7 +218,7 @@ async function processAndUploadPhoto(file) {
         caption: '',
         taken_at: new Date().toISOString(),
         file_size: file.size,
-        thumb_path: storagePath, // 縮圖用同一路徑，CSS 會縮小顯示
+        thumb_path: thumbPath, // 獨立縮圖路徑，節省頻寬
         created_at: new Date().toISOString()
     };
 
@@ -379,8 +390,13 @@ async function deletePhoto(photoId, gridIdx) {
 async function _deletePhotoById(photoId) {
     if (!AppState.supabase) return;
     var photo = AppState._photoData.find(function(p) { return p.id === photoId; });
-    if (photo && photo.storage_path) {
-        try { await AppState.supabase.storage.from('tree-photos').remove([photo.storage_path]); } catch(e) {}
+    if (photo) {
+        var toRemove = [];
+        if (photo.storage_path) toRemove.push(photo.storage_path);
+        if (photo.thumb_path && photo.thumb_path !== photo.storage_path) toRemove.push(photo.thumb_path);
+        if (toRemove.length > 0) {
+            try { await AppState.supabase.storage.from('tree-photos').remove(toRemove); } catch(e) {}
+        }
     }
     var r = await AppState.supabase.from('tree_photos').delete().eq('id', photoId);
     if (r.error) { toast('❌ ' + r.error.message, 'error'); }
@@ -449,7 +465,7 @@ function renderPhotoStripContent(stripEl, photos, treeId) {
 
     for (var i = 0; i < displayPhotos.length; i++) {
         var p = displayPhotos[i];
-        var url = p.storage_path;
+        var url = p.thumb_path || p.storage_path;
         if (url && !url.startsWith('http')) {
             try { url = AppState.supabase.storage.from('tree-photos').getPublicUrl(url).data.publicUrl; } catch(e) {}
         }

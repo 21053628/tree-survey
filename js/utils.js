@@ -143,11 +143,42 @@ function recBadge(v) {
 function debounce(fn, ms) {
     ms = ms || DEBOUNCE_DELAY;
     var timer = null;
+    var pendingPromise = null;
+    var pendingResolve = null;
+    var pendingReject = null;
     return function() {
         var ctx = this;
         var args = arguments;
         if (timer) clearTimeout(timer);
-        timer = setTimeout(function() { fn.apply(ctx, args); }, ms);
+        if (pendingReject) {
+            pendingReject(new Error('debounced'));
+            pendingReject = null;
+        }
+        if (!pendingPromise) {
+            pendingPromise = new Promise(function(resolve, reject) {
+                pendingResolve = resolve;
+                pendingReject = reject;
+            });
+        }
+        timer = setTimeout(function() {
+            var result;
+            try {
+                result = fn.apply(ctx, args);
+            } catch(e) {
+                if (pendingReject) { pendingReject(e); pendingReject = null; pendingPromise = null; pendingResolve = null; }
+                return;
+            }
+            if (result && typeof result.then === 'function') {
+                result.then(function(v) {
+                    if (pendingResolve) { pendingResolve(v); pendingResolve = null; pendingReject = null; pendingPromise = null; }
+                }).catch(function(e) {
+                    if (pendingReject) { pendingReject(e); pendingReject = null; pendingResolve = null; pendingPromise = null; }
+                });
+            } else {
+                if (pendingResolve) { pendingResolve(result); pendingResolve = null; pendingReject = null; pendingPromise = null; }
+            }
+        }, ms);
+        return pendingPromise;
     };
 }
 

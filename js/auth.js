@@ -55,7 +55,7 @@ function onAuthenticated(user) {
                 warn.innerHTML = getProtocolWarningHTML();
                 warn.classList.remove('hidden');
             }
-        }, 2000);
+        }, DELAY_GPS_WARN);
     }
     toast('✅ 登入成功 — ' + (user.email || ''), 'success');
 }
