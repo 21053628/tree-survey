@@ -20,7 +20,7 @@ async function loadTreePhotos(treeId) {
     AppState._photoCurrentTreeId = treeId;
     if (!treeId || !AppState.supabase) { AppState._photoData = []; renderPhotoGrid(); return; }
     try {
-        var r = await AppState.supabase.from('tree_photos')
+        const r = await AppState.supabase.from('tree_photos')
             .select('*')
             .eq('tree_id', treeId)
             .order('created_at', { ascending: false });
@@ -38,21 +38,21 @@ async function loadTreePhotos(treeId) {
  * 渲染照片縮圖網格到 treeModal 中
  */
 function renderPhotoGrid() {
-    var grid = document.getElementById('photoGrid');
-    var countLabel = document.getElementById('photoCountLabel');
+    const grid = document.getElementById('photoGrid');
+    const countLabel = document.getElementById('photoCountLabel');
     if (!grid) return;
     if (countLabel) countLabel.textContent = AppState._photoData.length + ' 張';
     grid.innerHTML = '';
     AppState._photoData.forEach(function(p, idx) {
-        var div = document.createElement('div');
+        const div = document.createElement('div');
         div.className = 'photo-thumb';
-        var url = p.thumb_path || p.storage_path;
+        let url = p.thumb_path || p.storage_path;
         // 如果是 storage path，轉換為 public URL
         if (url && !url.startsWith('http')) {
             try { url = AppState.supabase.storage.from('tree-photos').getPublicUrl(url).data.publicUrl; } catch(e) {}
         }
         // 安全建立 img element
-        var img = document.createElement('img');
+        const img = document.createElement('img');
         img.src = url || '';
         img.alt = 'Photo';
         img.onerror = function() { this.style.display = 'none'; };
@@ -63,13 +63,13 @@ function renderPhotoGrid() {
         div.appendChild(img);
 
         if (p.caption) {
-            var cap = document.createElement('div');
+            const cap = document.createElement('div');
             cap.className = 'photo-caption-badge';
             cap.textContent = p.caption;
             div.appendChild(cap);
         }
 
-        var delBtn = document.createElement('button');
+        const delBtn = document.createElement('button');
         delBtn.className = 'photo-delete';
         delBtn.title = '刪除照片';
         delBtn.textContent = '✕';
@@ -98,22 +98,22 @@ async function handlePhotoFilesSelected(input) {
         input.value = '';
         return;
     }
-    var files = Array.from(input.files);
+    const files = Array.from(input.files);
     input.value = '';
-    var total = files.length;
-    var completed = 0;
-    var failed = 0;
+    const total = files.length;
+    let completed = 0;
+    let failed = 0;
 
     toast('📷 正在處理 ' + total + ' 張照片...', 'warning');
     _updatePhotoProgress(0, total);
 
     // 並行處理，限制同時上限 4
-    var CONCURRENCY = 4;
-    var idx = 0;
+    const CONCURRENCY = 4;
+    let idx = 0;
 
     async function worker() {
         while (idx < files.length) {
-            var i = idx++;
+            const i = idx++;
             try {
                 await processAndUploadPhoto(files[i]);
                 completed++;
@@ -126,8 +126,8 @@ async function handlePhotoFilesSelected(input) {
     }
 
     // 啟動 worker pool
-    var workers = [];
-    for (var w = 0; w < Math.min(CONCURRENCY, total); w++) {
+    const workers = [];
+    for (let w = 0; w < Math.min(CONCURRENCY, total); w++) {
         workers.push(worker());
     }
     await Promise.all(workers);
@@ -148,7 +148,7 @@ async function handlePhotoFilesSelected(input) {
  * @param {number} total - 總數
  */
 function _updatePhotoProgress(done, total) {
-    var label = document.getElementById('photoUploadLabel');
+    const label = document.getElementById('photoUploadLabel');
     if (label) {
         if (done < total) {
             label.textContent = '上傳中 ' + done + '/' + total;
@@ -164,52 +164,32 @@ function _updatePhotoProgress(done, total) {
  */
 async function processAndUploadPhoto(file) {
     // 處理 HEIC
-    var blob = file;
+    let blob = file;
     if (file.type === 'image/heic' || file.type === 'image/heif' ||
         file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
         if (window.heic2any) {
             try {
-                var heicBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: PHOTO_QUALITY });
+                const heicBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: PHOTO_QUALITY });
                 blob = Array.isArray(heicBlob) ? heicBlob[0] : heicBlob;
             } catch(e) { console.warn('HEIC conversion failed, trying raw upload:', e.message); }
         }
     }
 
     // 壓縮產生大圖 + 縮圖
-    var compressed = await compressImage(blob, PHOTO_MAX_DIM, PHOTO_QUALITY);
-    var thumb = await compressImage(blob, THUMB_MAX_DIM, THUMB_QUALITY);
+    const compressed = await compressImage(blob, PHOTO_MAX_DIM, PHOTO_QUALITY);
+    const thumb = await compressImage(blob, THUMB_MAX_DIM, THUMB_QUALITY);
 
     // 產生檔名
-    var ext = file.name.split('.').pop().toLowerCase();
+    let ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'heic' || ext === 'heif') ext = 'jpg';
-    var fileName = uuid() + '.' + ext;
-    var storagePath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/' + fileName;
-    var thumbPath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/thumb_' + fileName;
+    const fileName = uuid() + '.' + ext;
+    const storagePath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/' + fileName;
+    const thumbPath = AppState.currentProjectId + '/' + AppState._photoCurrentTreeId + '/thumb_' + fileName;
 
-    // 並行上傳大圖 + 縮圖到 Supabase Storage
-    var upResult = await AppState.supabase.storage.from('tree-photos').upload(storagePath, compressed, {
-        contentType: 'image/jpeg',
-        upsert: false
-    });
-    if (upResult.error) {
-        console.warn('Storage upload err:', upResult.error.message);
-        toast('⚠️ 請先建立 Supabase Storage bucket: tree-photos', 'warning');
-        throw new Error('Storage upload failed: ' + upResult.error.message);
-    }
-    // 上傳縮圖（失敗唔影響主流程）
-    try {
-        await AppState.supabase.storage.from('tree-photos').upload(thumbPath, thumb, {
-            contentType: 'image/jpeg',
-            upsert: false
-        });
-    } catch(e) {
-        console.warn('Thumb upload err (non-fatal):', e.message);
-        thumbPath = storagePath;
-    }
-
-    // 插入 tree_photos 記錄
-    var photoRecord = {
-        id: uuid(),
+    // ═══ 先寫 DB 記錄（防止孤兒 Storage 檔案）═══
+    const photoId = uuid();
+    const photoRecord = {
+        id: photoId,
         tree_id: AppState._photoCurrentTreeId,
         project_id: AppState.currentProjectId,
         user_id: AppState.currentUser?.id,
@@ -218,15 +198,48 @@ async function processAndUploadPhoto(file) {
         caption: '',
         taken_at: new Date().toISOString(),
         file_size: file.size,
-        thumb_path: thumbPath, // 獨立縮圖路徑，節省頻寬
+        thumb_path: thumbPath,
         created_at: new Date().toISOString()
     };
 
-    var insResult = await AppState.supabase.from('tree_photos').insert(photoRecord);
+    const insResult = await AppState.supabase.from('tree_photos').insert(photoRecord);
     if (insResult.error) {
         console.warn('Photo record insert err:', insResult.error.message);
         toast('⚠️ 請先建立 tree_photos 資料表 (SQL)', 'warning');
         throw new Error('DB insert failed: ' + insResult.error.message);
+    }
+
+    // ═══ 再上傳 Storage，失敗則 rollback DB ═══
+    let uploadSuccess = true;
+    try {
+        const upResult = await AppState.supabase.storage.from('tree-photos').upload(storagePath, compressed, {
+            contentType: 'image/jpeg',
+            upsert: false
+        });
+        if (upResult.error) {
+            uploadSuccess = false;
+            toast('⚠️ 請先建立 Supabase Storage bucket: tree-photos', 'warning');
+            throw new Error('Storage upload failed: ' + upResult.error.message);
+        }
+    } catch(e) {
+        uploadSuccess = false;
+        throw e;
+    }
+
+    // 縮圖上傳（best-effort，不影響主流程）
+    try {
+        await AppState.supabase.storage.from('tree-photos').upload(thumbPath, thumb, {
+            contentType: 'image/jpeg',
+            upsert: false
+        });
+    } catch(e) {
+        console.warn('Thumb upload err (non-fatal):', e.message);
+    }
+
+    // ═══ Rollback：Storage上傳失敗 → 刪除DB記錄 ═══
+    if (!uploadSuccess) {
+        try { await AppState.supabase.from('tree_photos').delete().eq('id', photoId); } catch(e) {}
+        throw new Error('Photo sync failed and rolled back');
     }
 }
 
@@ -239,17 +252,17 @@ async function processAndUploadPhoto(file) {
  */
 function compressImage(blob, maxSize, quality) {
     return new Promise(function(resolve, reject) {
-        var img = new Image();
-        var url = URL.createObjectURL(blob);
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
         img.onload = function() {
             URL.revokeObjectURL(url);
-            var w = img.width, h = img.height;
+            const w = img.width, h = img.height;
             if (w <= maxSize && h <= maxSize) { resolve(blob); return; }
-            var ratio = Math.min(maxSize / w, maxSize / h);
-            var canvas = document.createElement('canvas');
+            const ratio = Math.min(maxSize / w, maxSize / h);
+            const canvas = document.createElement('canvas');
             canvas.width = Math.round(w * ratio);
             canvas.height = Math.round(h * ratio);
-            var ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             canvas.toBlob(function(compressedBlob) {
                 resolve(compressedBlob || blob);
@@ -280,9 +293,9 @@ function openPhotoViewer(idx) {
  * 更新照片檢視器顯示
  */
 function updatePhotoViewer() {
-    var p = AppState._photoData[AppState._photoViewerIndex];
+    const p = AppState._photoData[AppState._photoViewerIndex];
     if (!p) return;
-    var url = p.storage_path;
+    let url = p.storage_path;
     if (url && !url.startsWith('http')) {
         try { url = AppState.supabase.storage.from('tree-photos').getPublicUrl(url).data.publicUrl; } catch(e) {}
     }
@@ -306,14 +319,14 @@ function photoViewerNav(direction) {
  * 下載當前檢視的照片
  */
 function downloadCurrentPhoto() {
-    var p = AppState._photoData[AppState._photoViewerIndex];
+    const p = AppState._photoData[AppState._photoViewerIndex];
     if (!p) return;
-    var url = p.storage_path;
+    let url = p.storage_path;
     if (url && !url.startsWith('http')) {
         try { url = AppState.supabase.storage.from('tree-photos').getPublicUrl(url).data.publicUrl; } catch(e) {}
     }
     if (url) {
-        var a = document.createElement('a');
+        const a = document.createElement('a');
         a.href = url;
         a.download = p.file_name || 'photo.jpg';
         a.click();
@@ -328,7 +341,7 @@ function downloadCurrentPhoto() {
  * 編輯當前照片說明
  */
 function editPhotoCaption() {
-    var p = AppState._photoData[AppState._photoViewerIndex];
+    const p = AppState._photoData[AppState._photoViewerIndex];
     if (!p) return;
     document.getElementById('photoCaptionInput').value = p.caption || '';
     document.getElementById('photoCaptionDate').value = p.taken_at ? p.taken_at.split('T')[0] : '';
@@ -339,14 +352,14 @@ function editPhotoCaption() {
  * 儲存照片說明
  */
 async function savePhotoCaption() {
-    var p = AppState._photoData[AppState._photoViewerIndex];
+    const p = AppState._photoData[AppState._photoViewerIndex];
     if (!p || !AppState.supabase) return;
-    var caption = document.getElementById('photoCaptionInput').value.trim();
-    var takenAt = document.getElementById('photoCaptionDate').value;
-    var updateData = { caption: caption, updated_at: new Date().toISOString() };
+    const caption = document.getElementById('photoCaptionInput').value.trim();
+    const takenAt = document.getElementById('photoCaptionDate').value;
+    const updateData = { caption: caption, updated_at: new Date().toISOString() };
     if (takenAt) updateData.taken_at = new Date(takenAt + 'T00:00:00').toISOString();
 
-    var r = await AppState.supabase.from('tree_photos').update(updateData).eq('id', p.id);
+    const r = await AppState.supabase.from('tree_photos').update(updateData).eq('id', p.id);
     if (r.error) { toast('❌ ' + r.error.message, 'error'); return; }
     p.caption = caption;
     if (takenAt) p.taken_at = updateData.taken_at;
@@ -364,7 +377,7 @@ async function savePhotoCaption() {
  * 從檢視器刪除當前照片
  */
 async function deleteCurrentPhoto() {
-    var p = AppState._photoData[AppState._photoViewerIndex];
+    const p = AppState._photoData[AppState._photoViewerIndex];
     if (!p) return;
     if (!confirm('確定刪除呢張照片？')) return;
     await _deletePhotoById(p.id);
@@ -389,16 +402,16 @@ async function deletePhoto(photoId, gridIdx) {
  */
 async function _deletePhotoById(photoId) {
     if (!AppState.supabase) return;
-    var photo = AppState._photoData.find(function(p) { return p.id === photoId; });
+    const photo = AppState._photoData.find(function(p) { return p.id === photoId; });
     if (photo) {
-        var toRemove = [];
+        const toRemove = [];
         if (photo.storage_path) toRemove.push(photo.storage_path);
         if (photo.thumb_path && photo.thumb_path !== photo.storage_path) toRemove.push(photo.thumb_path);
         if (toRemove.length > 0) {
             try { await AppState.supabase.storage.from('tree-photos').remove(toRemove); } catch(e) {}
         }
     }
-    var r = await AppState.supabase.from('tree_photos').delete().eq('id', photoId);
+    const r = await AppState.supabase.from('tree_photos').delete().eq('id', photoId);
     if (r.error) { toast('❌ ' + r.error.message, 'error'); }
     else { toast('✅ 已刪除', 'success'); }
 }
@@ -418,22 +431,22 @@ async function loadPhotosIntoPopup(treeId, stripEl) {
         return;
     }
     stripEl.innerHTML = '';
-    var loadingDiv = document.createElement('div');
+    const loadingDiv = document.createElement('div');
     loadingDiv.className = 'strip-loading';
     loadingDiv.textContent = '⏳ 載入中...';
     stripEl.appendChild(loadingDiv);
     try {
-        var r = await AppState.supabase.from('tree_photos')
+        const r = await AppState.supabase.from('tree_photos')
             .select('*')
             .eq('tree_id', treeId)
             .order('created_at', { ascending: false })
             .limit(POPUP_PHOTO_LIMIT);
-        var photos = (r.data && r.data.length > 0) ? r.data : [];
+        const photos = (r.data && r.data.length > 0) ? r.data : [];
         AppState._popupPhotoCache[treeId] = photos;
         renderPhotoStripContent(stripEl, photos, treeId);
     } catch(e) {
         stripEl.innerHTML = '';
-        var errDiv = document.createElement('div');
+        const errDiv = document.createElement('div');
         errDiv.className = 'strip-empty';
         errDiv.textContent = '❌ 載入失敗';
         stripEl.appendChild(errDiv);
@@ -449,27 +462,27 @@ async function loadPhotosIntoPopup(treeId, stripEl) {
 function renderPhotoStripContent(stripEl, photos, treeId) {
     stripEl.innerHTML = '';
     if (!photos || photos.length === 0) {
-        var emptyDiv = document.createElement('div');
+        const emptyDiv = document.createElement('div');
         emptyDiv.className = 'strip-empty';
         emptyDiv.textContent = '📭 未有照片';
         stripEl.appendChild(emptyDiv);
         return;
     }
-    var displayPhotos = photos.slice(0, POPUP_STRIP_DISPLAY);
-    var hasMore = photos.length > POPUP_STRIP_DISPLAY;
+    const displayPhotos = photos.slice(0, POPUP_STRIP_DISPLAY);
+    const hasMore = photos.length > POPUP_STRIP_DISPLAY;
 
-    var label = document.createElement('div');
+    const label = document.createElement('div');
     label.className = 'strip-label';
     label.textContent = '📸 ' + photos.length + ' 張照片';
     stripEl.appendChild(label);
 
-    for (var i = 0; i < displayPhotos.length; i++) {
-        var p = displayPhotos[i];
-        var url = p.thumb_path || p.storage_path;
+    for (let i = 0; i < displayPhotos.length; i++) {
+        const p = displayPhotos[i];
+        let url = p.thumb_path || p.storage_path;
         if (url && !url.startsWith('http')) {
             try { url = AppState.supabase.storage.from('tree-photos').getPublicUrl(url).data.publicUrl; } catch(e) {}
         }
-        var img = document.createElement('img');
+        const img = document.createElement('img');
         img.className = 'strip-thumb';
         img.src = url || '';
         img.title = p.caption || '';
@@ -484,7 +497,7 @@ function renderPhotoStripContent(stripEl, photos, treeId) {
     }
 
     if (hasMore) {
-        var moreSpan = document.createElement('span');
+        const moreSpan = document.createElement('span');
         moreSpan.className = 'strip-more';
         moreSpan.textContent = '📷 查看全部 ▶';
         moreSpan.addEventListener('click', function(e) {
@@ -502,10 +515,10 @@ function renderPhotoStripContent(stripEl, photos, treeId) {
  */
 async function openPhotoViewerForTree(treeId, startIdx) {
     startIdx = startIdx || 0;
-    var photos = AppState._popupPhotoCache[treeId];
+    let photos = AppState._popupPhotoCache[treeId];
     if (!photos) {
         try {
-            var r = await AppState.supabase.from('tree_photos')
+            const r = await AppState.supabase.from('tree_photos')
                 .select('*')
                 .eq('tree_id', treeId)
                 .order('created_at', { ascending: false });

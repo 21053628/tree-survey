@@ -15,7 +15,7 @@
  * 優先使用 botanical_name + chinese_name 欄位，若無則fallback到舊版 species 欄位
  */
 function loadSpeciesList() {
-    var supabase = AppState.supabase;
+    const supabase = AppState.supabase;
     if (!supabase) { setTimeout(function(){ loadSpeciesList(); }, 1000); return; }
     supabase.from('species_list').select('botanical_name,chinese_name').order('botanical_name', { ascending: true }).then(function(r) {
         if (!r.error && r.data && r.data.length > 0) {
@@ -41,10 +41,10 @@ function loadSpeciesList() {
                 initSuggestDropdowns();
                 return;
             }
-            var parsed = [];
+            const parsed = [];
             r2.data.forEach(function(row) {
-                var s = row.species || '';
-                var match = s.match(/^([A-Za-z][A-Za-z .''\-]*(?:\([^)]*\))?)\s+(.+)$/);
+                const s = row.species || '';
+                const match = s.match(/^([A-Za-z][A-Za-z .''\-]*(?:\([^)]*\))?)\s+(.+)$/);
                 if (match) { parsed.push({ bot: match[1].trim(), chi: match[2].trim() }); }
                 else { parsed.push({ bot: s, chi: '' }); }
             });
@@ -61,9 +61,9 @@ function buildSpeciesLists(rows) {
     AppState.botanicalNames = [];
     AppState.chineseNames = [];
     AppState.speciesMap = {};
-    var seenBot = {}, seenChi = {};
+    const seenBot = {}, seenChi = {};
     rows.forEach(function(r) {
-        var bot = (r.bot || '').trim(), chi = (r.chi || '').trim();
+        const bot = (r.bot || '').trim(), chi = (r.chi || '').trim();
         if (bot && !seenBot[bot]) { AppState.botanicalNames.push(bot); seenBot[bot] = true; }
         if (chi && chi !== '-' && !seenChi[chi]) { AppState.chineseNames.push(chi); seenChi[chi] = true; }
         if (bot && chi && chi !== '-') {
@@ -103,12 +103,12 @@ function initSuggestDropdowns() {
 function setupSuggest(inputId, wrapId, dataList, autoFillType) {
     if (AppState._suggestSetupDone[inputId]) return;
     AppState._suggestSetupDone[inputId] = true;
-    var input = document.getElementById(inputId);
-    var wrap = document.getElementById(wrapId);
+    const input = document.getElementById(inputId);
+    const wrap = document.getElementById(wrapId);
     if (!input || !wrap) return;
-    var dropdown = wrap.querySelector('.suggest-dropdown');
+    const dropdown = wrap.querySelector('.suggest-dropdown');
     if (!dropdown) return;
-    var selectedIndex = -1;
+    let selectedIndex = -1;
 
     /**
      * 渲染下拉選單
@@ -117,31 +117,31 @@ function setupSuggest(inputId, wrapId, dataList, autoFillType) {
     function render(filter) {
         dropdown.innerHTML = '';
         selectedIndex = -1;
-        var filtered = dataList;
+        let filtered = dataList;
         if (filter) {
-            var lower = filter.toLowerCase();
+            const lower = filter.toLowerCase();
             filtered = dataList.filter(function(item) { return item.toLowerCase().indexOf(lower) >= 0; });
         }
-        var show = filtered.slice(0, 200);
+        const show = filtered.slice(0, 200);
         if (show.length === 0) {
             dropdown.innerHTML = '<div class="no-results">' + (dataList.length === 0 ? 'Species list is empty' : 'No results') + '</div>';
         } else {
             show.forEach(function(item, idx) {
-                var div = document.createElement('div');
+                const div = document.createElement('div');
                 div.className = 'suggest-item';
                 if (filter && filter.length > 0) {
-                    var esc2 = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    var regex = new RegExp('(' + esc2 + ')', 'gi');
-                    var match = regex.exec(item);
+                    const esc2 = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp('(' + esc2 + ')', 'gi');
+                    const match = regex.exec(item);
                     if (match) {
-                        var mIdx = match.index;
-                        var before = document.createTextNode(item.substring(0, mIdx));
+                        const mIdx = match.index;
+                        const before = document.createTextNode(item.substring(0, mIdx));
                         div.appendChild(before);
-                        var hl = document.createElement('span');
+                        const hl = document.createElement('span');
                         hl.className = 'hl';
                         hl.textContent = match[1];
                         div.appendChild(hl);
-                        var after = document.createTextNode(item.substring(mIdx + match[1].length));
+                        const after = document.createTextNode(item.substring(mIdx + match[1].length));
                         div.appendChild(after);
                     } else {
                         div.textContent = item;
@@ -176,7 +176,7 @@ function setupSuggest(inputId, wrapId, dataList, autoFillType) {
      * @param {string} val - 選取的值
      */
     function autoFillOpposite(fromId, val) {
-        var opp = AppState.speciesMap[val];
+        const opp = AppState.speciesMap[val];
         if (!opp) return;
         if (fromId === 'tree_botanicalName') {
             document.getElementById('tree_chineseName').value = opp;
@@ -193,7 +193,7 @@ function setupSuggest(inputId, wrapId, dataList, autoFillType) {
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { render(input.value); e.preventDefault(); }
             return;
         }
-        var items = dropdown.querySelectorAll('.suggest-item');
+        const items = dropdown.querySelectorAll('.suggest-item');
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             selectedIndex = Math.min(selectedIndex + 1, items.length - 1);

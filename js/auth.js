@@ -86,21 +86,21 @@ function onUnauthenticated() {
  * 處理登入表單提交
  */
 async function handleLogin() {
-    var supabase = AppState.supabase;
+    const supabase = AppState.supabase;
     if (!supabase) {
         showLoginError('⚠️ 系統初始化中，請稍候...');
         return;
     }
-    var email = document.getElementById('loginEmail').value.trim();
-    var password = document.getElementById('loginPassword').value;
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
     if (!email) { showLoginError('請輸入電郵地址'); return; }
     if (!password) { showLoginError('請輸入密碼'); return; }
     setLoginLoading(true);
     hideLoginError();
     try {
-        var result = await supabase.auth.signInWithPassword({ email: email, password: password });
+        const result = await supabase.auth.signInWithPassword({ email: email, password: password });
         if (result.error) {
-            var msg = result.error.message || '登入失敗';
+            let msg = result.error.message || '登入失敗';
             if (msg.indexOf('Invalid login credentials') >= 0 || msg.indexOf('invalid') >= 0) msg = '❌ 電郵或密碼錯誤，請再試';
             else if (msg.indexOf('Email not confirmed') >= 0) msg = '📧 請先到電郵信箱確認註冊';
             else msg = '❌ ' + msg;
@@ -119,7 +119,7 @@ async function handleLogin() {
  * 處理登出
  */
 async function handleLogout() {
-    var supabase = AppState.supabase;
+    const supabase = AppState.supabase;
     if (!supabase) return;
     try {
         await supabase.auth.signOut();
@@ -139,7 +139,7 @@ async function handleLogout() {
  * @param {string} msg
  */
 function showLoginError(msg) {
-    var el = document.getElementById('loginError');
+    const el = document.getElementById('loginError');
     if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
@@ -147,7 +147,7 @@ function showLoginError(msg) {
  * 隱藏登入錯誤訊息
  */
 function hideLoginError() {
-    var el = document.getElementById('loginError');
+    const el = document.getElementById('loginError');
     if (el) { el.style.display = 'none'; }
 }
 
@@ -156,9 +156,9 @@ function hideLoginError() {
  * @param {boolean} loading
  */
 function setLoginLoading(loading) {
-    var btn = document.getElementById('loginBtn');
-    var spinner = document.getElementById('loginSpinner');
-    var btnText = document.getElementById('loginBtnText');
+    const btn = document.getElementById('loginBtn');
+    const spinner = document.getElementById('loginSpinner');
+    const btnText = document.getElementById('loginBtnText');
     if (!btn || !spinner || !btnText) return;
     if (loading) {
         btn.disabled = true;
@@ -180,7 +180,7 @@ function setLoginLoading(loading) {
  * 由 supabase-client.js 的 initSupabase() 呼叫
  */
 function initAuth() {
-    var supabase = AppState.supabase;
+    const supabase = AppState.supabase;
     if (!supabase) return;
     try {
         supabase.auth.onAuthStateChange(function(event, session) {

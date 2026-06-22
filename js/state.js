@@ -55,7 +55,7 @@
  * @property {object} treesCache - 樹木列表快取 {get, set, invalidate}
  */
 
-var AppState = {
+const AppState = {
     supabase: null,
     currentView: 'projects',
     currentDetailTab: 'list',

@@ -13,7 +13,7 @@
 /**
  * 載入樹木列表（含 debounce 延遲）
  */
-var loadProjectTrees = debounce(_loadProjectTrees);
+const loadProjectTrees = debounce(_loadProjectTrees);
 
 /**
  * 實際載入樹木列表（由 debounce 包裝）
@@ -21,16 +21,16 @@ var loadProjectTrees = debounce(_loadProjectTrees);
 async function _loadProjectTrees() {
     if (AppState._loadingTrees) return;
     AppState._loadingTrees = true;
-    var tb = document.getElementById('treesBody');
-    var cv = document.getElementById('treeCardsView');
+    const tb = document.getElementById('treesBody');
+    const cv = document.getElementById('treeCardsView');
     if (!tb || !cv) { AppState._loadingTrees = false; return; }
     tb.innerHTML = '<tr><td colspan="10" class="empty">⏳ 載入中...</td></tr>';
     cv.innerHTML = '';
     if (!AppState.supabase || !AppState.currentProjectId) { AppState._loadingTrees = false; return; }
 
     // --- 快取檢查 ---
-    var cacheKey = 'trees_' + AppState.currentProjectId + '_' + AppState.treePage + '_' + ((document.getElementById('treeSearch')?.value || '').trim());
-    var cached = AppState.treesCache.get(cacheKey);
+    const cacheKey = 'trees_' + AppState.currentProjectId + '_' + AppState.treePage + '_' + ((document.getElementById('treeSearch')?.value || '').trim());
+    const cached = AppState.treesCache.get(cacheKey);
     if (cached) {
         _renderTreeTable(cached.data);
         _renderTreeCards(cached.data);
@@ -41,28 +41,28 @@ async function _loadProjectTrees() {
 
     try {
         // 載入專案資訊
-        var pr = await AppState.supabase.from('projects').select('*').eq('id', AppState.currentProjectId).single();
+        const pr = await AppState.supabase.from('projects').select('*').eq('id', AppState.currentProjectId).single();
         if (pr.data) document.getElementById('sProjectDate').textContent = pr.data.surveyDate || '—';
 
-        var s = (document.getElementById('treeSearch')?.value || '').trim();
-        var q = AppState.supabase.from('trees')
+        const s = (document.getElementById('treeSearch')?.value || '').trim();
+        let q = AppState.supabase.from('trees')
             .select('*', { count: 'exact' })
             .eq('projectId', AppState.currentProjectId)
             .range(AppState.treePage * PAGE_SIZE, (AppState.treePage + 1) * PAGE_SIZE - 1)
             .order('created_at', { ascending: false });
         if (s) q = q.or('treeIdNo.ilike.%' + s + '%,botanicalName.ilike.%' + s + '%,chineseName.ilike.%' + s + '%,remarks.ilike.%' + s + '%');
-        var r = await q;
+        const r = await q;
         if (r.error) {
             tb.innerHTML = '<tr><td colspan="10" class="empty" style="color:#f87171;">❌ ' + r.error.message + '</td></tr>';
             AppState._loadingTrees = false;
             return;
         }
-        var count = r.count || 0;
+        const count = r.count || 0;
         document.getElementById('sProjectTreeCount').textContent = count;
 
         // 有座標的數量
         try {
-            var mc = await AppState.supabase.from('trees')
+            const mc = await AppState.supabase.from('trees')
                 .select('id', { count: 'exact', head: true })
                 .eq('projectId', AppState.currentProjectId)
                 .not('latitude', 'is', null);
@@ -108,74 +108,74 @@ function _hasCoords(d) {
  * @param {object[]} data
  */
 function _renderTreeTable(data) {
-    var tb = document.getElementById('treesBody');
+    const tb = document.getElementById('treesBody');
     if (!tb) return;
     tb.innerHTML = '';
-    var fragment = document.createDocumentFragment();
+    const fragment = document.createDocumentFragment();
     data.forEach(function(d) {
-        var tr = document.createElement('tr');
+        const tr = document.createElement('tr');
 
         // Col: Tree ID
-        var tdId = document.createElement('td');
-        var strong = document.createElement('strong');
+        const tdId = document.createElement('td');
+        const strong = document.createElement('strong');
         strong.textContent = d.treeIdNo || '—';
         strong.style.color = '#fbbf24';
         tdId.appendChild(strong);
         tr.appendChild(tdId);
 
         // Col: Botanical Name
-        var tdBot = document.createElement('td');
+        const tdBot = document.createElement('td');
         tdBot.style.cssText = 'font-style:italic;font-size:.78rem';
         tdBot.textContent = d.botanicalName || '—';
         tr.appendChild(tdBot);
 
         // Col: Chinese Name
-        var tdChi = document.createElement('td');
+        const tdChi = document.createElement('td');
         tdChi.textContent = d.chineseName || '—';
         tr.appendChild(tdChi);
 
         // Col: DBH
-        var tdDbh = document.createElement('td');
+        const tdDbh = document.createElement('td');
         if (d.trunkDiameter) { tdDbh.textContent = d.trunkDiameter; }
         else { tdDbh.innerHTML = '<span class="null-cell">—</span>'; }
         tr.appendChild(tdDbh);
 
         // Col: Height
-        var tdH = document.createElement('td');
+        const tdH = document.createElement('td');
         if (d.overallHeight) { tdH.textContent = d.overallHeight; }
         else { tdH.innerHTML = '<span class="null-cell">—</span>'; }
         tr.appendChild(tdH);
 
         // Col: Crown
-        var tdCrown = document.createElement('td');
+        const tdCrown = document.createElement('td');
         if (d.crownSpread) { tdCrown.textContent = d.crownSpread; }
         else { tdCrown.innerHTML = '<span class="null-cell">—</span>'; }
         tr.appendChild(tdCrown);
 
         // Col: Health
-        var tdHealth = document.createElement('td');
+        const tdHealth = document.createElement('td');
         tdHealth.appendChild(healthBadge(d.healthCondition));
         tr.appendChild(tdHealth);
 
         // Col: Structural
-        var tdStruct = document.createElement('td');
+        const tdStruct = document.createElement('td');
         tdStruct.appendChild(structBadge(d.structuralCondition));
         tr.appendChild(tdStruct);
 
         // Col: Recommendation
-        var tdRec = document.createElement('td');
+        const tdRec = document.createElement('td');
         tdRec.appendChild(recBadge(d.recommendation));
         tr.appendChild(tdRec);
 
         // Col: Actions
-        var tdAct = document.createElement('td');
+        const tdAct = document.createElement('td');
         if (_hasCoords(d)) {
-            var btnMap = elButton('📍', 'btn btn-map-go', function() { focusTreeOnMap(d.id); });
+            const btnMap = elButton('📍', 'btn btn-map-go', function() { focusTreeOnMap(d.id); });
             tdAct.appendChild(btnMap);
             tdAct.appendChild(document.createTextNode(' '));
         }
-        var btnEdit = elButton('✏️', 'btn btn-outline btn-xs', function() { editTree(d.id); });
-        var btnDel = elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteTree(d.id, d.treeIdNo || d.id); });
+        const btnEdit = elButton('✏️', 'btn btn-outline btn-xs', function() { editTree(d.id); });
+        const btnDel = elButton('🗑', 'btn btn-danger btn-xs', function() { confirmDeleteTree(d.id, d.treeIdNo || d.id); });
         tdAct.appendChild(btnEdit);
         tdAct.appendChild(document.createTextNode(' '));
         tdAct.appendChild(btnDel);
@@ -191,19 +191,19 @@ function _renderTreeTable(data) {
  * @param {object[]} data
  */
 function _renderTreeCards(data) {
-    var cv = document.getElementById('treeCardsView');
+    const cv = document.getElementById('treeCardsView');
     if (!cv) return;
     cv.innerHTML = '';
-    var fragment = document.createDocumentFragment();
+    const fragment = document.createDocumentFragment();
     data.forEach(function(d) {
-        var card = document.createElement('div');
+        const card = document.createElement('div');
         card.className = 'tree-card';
         card.addEventListener('click', function() { editTree(d.id); });
 
         // Row 1: ID + Recommendation badge
-        var row1 = document.createElement('div');
+        const row1 = document.createElement('div');
         row1.className = 'tc-row';
-        var idSpan = document.createElement('span');
+        const idSpan = document.createElement('span');
         idSpan.className = 'tc-id';
         idSpan.textContent = '🔢 ' + (d.treeIdNo || '—');
         row1.appendChild(idSpan);
@@ -211,35 +211,35 @@ function _renderTreeCards(data) {
         card.appendChild(row1);
 
         // Row 2: Botanical Name
-        var row2 = document.createElement('div');
+        const row2 = document.createElement('div');
         row2.className = 'tc-row';
-        var spSpan = document.createElement('span');
+        const spSpan = document.createElement('span');
         spSpan.className = 'tc-species';
-        var italic = document.createElement('i');
+        const italic = document.createElement('i');
         italic.textContent = d.botanicalName || '—';
         spSpan.appendChild(italic);
         row2.appendChild(spSpan);
         card.appendChild(row2);
 
         // Row 3: Chinese Name
-        var row3 = document.createElement('div');
+        const row3 = document.createElement('div');
         row3.className = 'tc-row';
-        var chiSpan = document.createElement('span');
+        const chiSpan = document.createElement('span');
         chiSpan.style.fontSize = '.85rem';
         chiSpan.textContent = d.chineseName || '—';
         row3.appendChild(chiSpan);
         card.appendChild(row3);
 
         // Metrics row
-        var metrics = [];
+        const metrics = [];
         if (d.trunkDiameter) metrics.push('📐 DBH: ' + d.trunkDiameter + 'mm');
         if (d.overallHeight) metrics.push('📏 H: ' + d.overallHeight + 'm');
         if (d.crownSpread) metrics.push('🌳 Crown: ' + d.crownSpread + 'm');
         if (metrics.length > 0) {
-            var metRow = document.createElement('div');
+            const metRow = document.createElement('div');
             metRow.className = 'tc-metrics';
             metrics.forEach(function(m) {
-                var s = document.createElement('span');
+                const s = document.createElement('span');
                 s.textContent = m;
                 metRow.appendChild(s);
             });
@@ -247,7 +247,7 @@ function _renderTreeCards(data) {
         }
 
         // Row: Health + Structural badges
-        var rowBadges = document.createElement('div');
+        const rowBadges = document.createElement('div');
         rowBadges.className = 'tc-row';
         rowBadges.style.marginTop = '6px';
         rowBadges.appendChild(healthBadge(d.healthCondition));
@@ -257,14 +257,14 @@ function _renderTreeCards(data) {
 
         // GPS coordinates
         if (_hasCoords(d)) {
-            var gpsDiv = document.createElement('div');
+            const gpsDiv = document.createElement('div');
             gpsDiv.className = 'tc-gps';
             gpsDiv.textContent = '📍 ' + Number(d.latitude).toFixed(5) + ', ' + Number(d.longitude).toFixed(5);
             card.appendChild(gpsDiv);
         }
 
         // Actions
-        var actions = document.createElement('div');
+        const actions = document.createElement('div');
         actions.className = 'tc-actions';
         if (_hasCoords(d)) {
             actions.appendChild(elButton('📍 地圖', 'btn btn-map-go', function() { focusTreeOnMap(d.id); }));
@@ -283,26 +283,26 @@ function _renderTreeCards(data) {
  * @param {number} count - 總筆數
  */
 function _renderTreePagination(count) {
-    var el2 = document.getElementById('treePagination');
+    const el2 = document.getElementById('treePagination');
     if (!el2) return;
     el2.innerHTML = '';
 
-    var span = document.createElement('span');
+    const span = document.createElement('span');
     span.textContent = '共 ' + count + ' 棵樹';
     el2.appendChild(span);
 
-    var btnsDiv = document.createElement('div');
+    const btnsDiv = document.createElement('div');
     btnsDiv.className = 'flex gap-2';
 
-    var btnFirst = elButton('⏮', 'btn btn-outline btn-xs', function() { AppState.treePage = 0; invalidateAndReloadTrees(); });
+    const btnFirst = elButton('⏮', 'btn btn-outline btn-xs', function() { AppState.treePage = 0; invalidateAndReloadTrees(); });
     if (AppState.treePage === 0) btnFirst.disabled = true;
     btnsDiv.appendChild(btnFirst);
 
-    var btnPrev = elButton('◀', 'btn btn-outline btn-xs', function() { AppState.treePage = Math.max(0, AppState.treePage - 1); invalidateAndReloadTrees(); });
+    const btnPrev = elButton('◀', 'btn btn-outline btn-xs', function() { AppState.treePage = Math.max(0, AppState.treePage - 1); invalidateAndReloadTrees(); });
     if (AppState.treePage === 0) btnPrev.disabled = true;
     btnsDiv.appendChild(btnPrev);
 
-    var btnNext = elButton('▶', 'btn btn-outline btn-xs', function() { AppState.treePage++; invalidateAndReloadTrees(); });
+    const btnNext = elButton('▶', 'btn btn-outline btn-xs', function() { AppState.treePage++; invalidateAndReloadTrees(); });
     if ((AppState.treePage + 1) * PAGE_SIZE >= count) btnNext.disabled = true;
     btnsDiv.appendChild(btnNext);
 
@@ -335,15 +335,15 @@ function searchTrees() {
  * @param {boolean} isEdit - 是否為編輯模式
  */
 function _resetTreeForm(isEdit) {
-    var titleEl = document.getElementById('treeModalTitle');
+    const titleEl = document.getElementById('treeModalTitle');
     titleEl.textContent = isEdit ? '✏️ 編輯樹木' : '🌲 新增樹木 — ' + AppState.currentProjectName;
     [
         'tree_treeIdNo', 'tree_botanicalName', 'tree_chineseName', 'tree_trunkDiameter',
         'tree_overallHeight', 'tree_crownSpread', 'tree_healthCondition', 'tree_structuralCondition',
         'tree_amenityValue', 'tree_observedDefects', 'tree_recommendation', 'tree_remarks',
         'tree_latitude', 'tree_longitude'
-    ].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
-    var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
+    ].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    const accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
     _setupGPSWarning();
     AppState._photoData = [];
     AppState._photoCurrentTreeId = null;
@@ -354,7 +354,7 @@ function _resetTreeForm(isEdit) {
  * 設定 GPS 協議警告區塊
  */
 function _setupGPSWarning() {
-    var warn = document.getElementById('gpsProtocolWarn');
+    const warn = document.getElementById('gpsProtocolWarn');
     if (!warn) return;
     if (!canUseGPS()) {
         warn.innerHTML = getProtocolWarningHTML();
@@ -387,7 +387,7 @@ function editTree(id) {
     if (!AppState.supabase) return;
     AppState.supabase.from('trees').select('*').eq('id', id).single().then(function(r) {
         if (r.error) { toast('❌ ' + r.error.message, 'error'); return; }
-        var d = r.data;
+        const d = r.data;
         document.getElementById('tree_editId').value = d.id;
         document.getElementById('tree_treeIdNo').value = d.treeIdNo || '';
         document.getElementById('tree_botanicalName').value = d.botanicalName || '';
@@ -405,7 +405,7 @@ function editTree(id) {
         document.getElementById('tree_longitude').value = (d.longitude != null) ? d.longitude : '';
         document.getElementById('tree_editUpdatedAt').value = d.updatedAt || '';
         document.getElementById('treeModalTitle').textContent = '✏️ 編輯樹木';
-        var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
+        const accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
         _setupGPSWarning();
         AppState._photoData = [];
         AppState._photoCurrentTreeId = d.id;
@@ -422,18 +422,18 @@ function editTree(id) {
  */
 async function saveTree() {
     if (!AppState.currentProjectId) { toast('⚠️ 冇選擇專案', 'error'); return; }
-    var tid = document.getElementById('tree_treeIdNo').value.trim();
+    const tid = document.getElementById('tree_treeIdNo').value.trim();
     if (!tid) { toast('⚠️ 請輸入 Tree ID', 'warning'); return; }
-    var eid = document.getElementById('tree_editId').value;
-    var latVal = document.getElementById('tree_latitude').value.trim();
-    var lngVal = document.getElementById('tree_longitude').value.trim();
-    var latNum = latVal ? parseFloat(latVal) : null;
-    var lngNum = lngVal ? parseFloat(lngVal) : null;
+    const eid = document.getElementById('tree_editId').value;
+    const latVal = document.getElementById('tree_latitude').value.trim();
+    const lngVal = document.getElementById('tree_longitude').value.trim();
+    const latNum = latVal ? parseFloat(latVal) : null;
+    const lngNum = lngVal ? parseFloat(lngVal) : null;
     if (latVal && isNaN(latNum)) { toast('⚠️ Latitude 格式錯誤', 'warning'); return; }
     if (lngVal && isNaN(lngNum)) { toast('⚠️ Longitude 格式錯誤', 'warning'); return; }
     if (latNum !== null && (latNum < -90 || latNum > 90)) { toast('⚠️ Latitude 超出範圍', 'warning'); return; }
     if (lngNum !== null && (lngNum < -180 || lngNum > 180)) { toast('⚠️ Longitude 超出範圍', 'warning'); return; }
-    var p = {
+    const p = {
         projectId: AppState.currentProjectId,
         treeIdNo: tid,
         botanicalName: document.getElementById('tree_botanicalName').value.trim(),
@@ -454,7 +454,7 @@ async function saveTree() {
         user_id: AppState.currentUser?.id
     };
     if (!eid) { p.id = uuid(); p.created_at = new Date().toISOString(); }
-    var r = eid ?
+    const r = eid ?
         await AppState.supabase.from('trees').update(p).eq('id', eid).select() :
         await AppState.supabase.from('trees').insert(p).select();
     if (r.error) { toast('❌ ' + r.error.message, 'error'); return; }
@@ -482,7 +482,7 @@ function confirmDeleteTree(id, name) {
 // ============================================================
 // 刪除確認執行（綁定到 confirmBtn）
 // ============================================================
-var confirmBtnEl = document.getElementById('confirmBtn');
+const confirmBtnEl = document.getElementById('confirmBtn');
 if (confirmBtnEl) {
     confirmBtnEl.addEventListener('click', async function() {
         if (!AppState.pendingDelete || !AppState.supabase) return;

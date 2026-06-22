@@ -10,19 +10,19 @@
 // ============================================================
 
 (function(){
-    var LIBS = CDN_LIBS;
-    var loaded = {};
+    const LIBS = CDN_LIBS;
+    const loaded = {};
     function loadLib(k, urls, idx, cb) {
         if (idx >= urls.length) { console.error('❌ ' + k + ' ALL FAILED'); cb(false); return; }
-        var url = urls[idx];
+        const url = urls[idx];
         console.log('⏳ CDN ' + k + ':', url);
-        var s = document.createElement('script');
+        const s = document.createElement('script');
         s.src = url;
         s.onload = function(){ console.log('✅ CDN ' + k + ':', url); cb(true); };
         s.onerror = function(){ console.warn('❌ CDN ' + k + ':', url); loadLib(k, urls, idx + 1, cb); };
         document.head.appendChild(s);
     }
-    var remaining = LIBS.length;
+    let remaining = LIBS.length;
     LIBS.forEach(function(lib) {
         loadLib(lib.key, lib.urls, 0, function(ok) {
             loaded[lib.key] = ok;
@@ -46,8 +46,8 @@ console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS(
 setStatus(true, 'CDN 載入中...');
 showLoginScreen();
 
-var _pollCount = 0;
-var _poll = setInterval(function(){
+let _pollCount = 0;
+const _poll = setInterval(function(){
     _pollCount++;
     if (window.__ALL_CDN_DONE__) {
         clearInterval(_poll);
@@ -77,11 +77,11 @@ document.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
     // Escape: 關閉最上層 modal
     if (e.key === 'Escape') {
-        var modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+        const modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
         if (modals.length > 0) {
-            var topZ = 0, topModal = null;
+            let topZ = 0, topModal = null;
             modals.forEach(function(m) {
-                var z = parseInt(window.getComputedStyle(m).zIndex) || 0;
+                const z = parseInt(window.getComputedStyle(m).zIndex) || 0;
                 if (z >= topZ) { topZ = z; topModal = m; }
             });
             if (topModal) topModal.classList.add('hidden');
@@ -100,12 +100,12 @@ document.addEventListener('keydown', function(e) {
 // 視窗 resize 事件（RWD 自適應刷新）
 // ============================================================
 
-var _lastW = window.innerWidth;
-var _resizeTimer;
+let _lastW = window.innerWidth;
+let _resizeTimer;
 window.addEventListener('resize', function() {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(function() {
-        var w = window.innerWidth;
+        const w = window.innerWidth;
         if (Math.abs(w - _lastW) < RESIZE_THRESHOLD_PX) return;
         _lastW = w;
         // 切換表格/卡片視圖需重新渲染
@@ -122,4 +122,108 @@ window.addEventListener('resize', function() {
             }
         }
     }, RESIZE_DEBOUNCE_MS);
+});
+
+// ============================================================
+// 全域事件委派：data-action 按鈕（取代所有 inline onclick）
+// ============================================================
+
+document.addEventListener('click', function(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.getAttribute('data-action');
+
+    switch (action) {
+        // --- Auth ---
+        case 'login': handleLogin(); break;
+        case 'logout': handleLogout(); break;
+
+        // --- Header ---
+        case 'diagnosis': diagnosis(); break;
+        case 'refresh': refreshAll(); break;
+
+        // --- Navigation ---
+        case 'nav-projects': goToProjects(); break;
+        case 'tab-list': showListView(); break;
+        case 'tab-map': showMapView(); break;
+
+        // --- Project CRUD ---
+        case 'create-project': showProjectModal(); break;
+        case 'save-project': saveProject(); break;
+        case 'export-all': exportAllProjectsExcel(); break;
+
+        // --- Tree CRUD ---
+        case 'create-tree': showTreeModal(); break;
+        case 'save-tree': saveTree(); break;
+        case 'export-project': exportProjectTreesExcel(); break;
+
+        // --- Modal ---
+        case 'close-modal': closeModal(el.getAttribute('data-modal')); break;
+
+        // --- GPS ---
+        case 'show-gps-dialog': showGPSDialog(); break;
+        case 'gps-start': closeModal('gpsPreModal'); doCaptureGPS(0); break;
+        case 'gps-retry': closeModal('gpsDenyModal'); doCaptureGPS(0); break;
+        case 'open-map-picker': openMapPicker(); break;
+
+        // --- Map Picker ---
+        case 'confirm-map-picker': confirmMapPicker(); break;
+        case 'close-map-picker': closeMapPicker(); break;
+
+        // --- Map Layers ---
+        case 'layer-dark': switchMainLayer('dark'); break;
+        case 'layer-imagery': switchMainLayer('imagery'); break;
+        case 'layer-topo': switchMainLayer('topo'); break;
+        case 'layer-street': switchMainLayer('street'); break;
+        case 'picker-layer-dark': switchPickerLayer('dark'); break;
+        case 'picker-layer-imagery': switchPickerLayer('imagery'); break;
+        case 'picker-layer-topo': switchPickerLayer('topo'); break;
+        case 'picker-layer-street': switchPickerLayer('street'); break;
+
+        // --- Health Filter ---
+        case 'filter-health':
+            toggleHealthFilter(el.getAttribute('data-health'), el);
+            break;
+
+        // --- GPS Locate ---
+        case 'locate-me': locateMe(); break;
+
+        // --- Photos ---
+        case 'trigger-photo-upload': document.getElementById('photoFileInput').click(); break;
+        case 'photo-prev': photoViewerNav(-1); break;
+        case 'photo-next': photoViewerNav(1); break;
+        case 'edit-photo-caption': editPhotoCaption(); break;
+        case 'download-photo': downloadCurrentPhoto(); break;
+        case 'delete-photo': deleteCurrentPhoto(); break;
+        case 'save-photo-caption': savePhotoCaption(); break;
+    }
+});
+
+// ============================================================
+// 全域事件委派：搜尋 input（data-action 在 input 元素上）
+// ============================================================
+
+document.addEventListener('input', function(e) {
+    const el = e.target;
+    if (!el.hasAttribute('data-action')) return;
+    const action = el.getAttribute('data-action');
+
+    switch (action) {
+        case 'search-projects': searchProjects(); break;
+        case 'search-trees': searchTrees(); break;
+        case 'search-map': searchMapTrees(); break;
+    }
+});
+
+// ============================================================
+// 全域事件委派：照片檔案選擇（change 事件）
+// ============================================================
+
+document.addEventListener('change', function(e) {
+    const el = e.target;
+    if (el.getAttribute('data-action') === 'photo-files-selected') {
+        if (typeof handlePhotoFilesSelected === 'function') {
+            handlePhotoFilesSelected(el);
+        }
+    }
 });

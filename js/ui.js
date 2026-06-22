@@ -16,9 +16,9 @@
  */
 function toast(msg, type) {
     type = type || 'success';
-    var c = document.getElementById('toastContainer');
+    const c = document.getElementById('toastContainer');
     if (!c) return;
-    var d = document.createElement('div');
+    const d = document.createElement('div');
     d.className = 'toast toast-' + type;
     d.textContent = msg;
     c.appendChild(d);
@@ -36,12 +36,12 @@ function toast(msg, type) {
  * @param {string} txt - 顯示文字
  */
 function setStatus(on, txt) {
-    var el = document.getElementById('connStatus');
+    const el = document.getElementById('connStatus');
     if (!el) return;
     el.className = 'header-status ' + (on ? 'online' : 'offline');
-    var d = el.querySelector('.dot');
+    const d = el.querySelector('.dot');
     if (d) d.className = 'dot ' + (on ? 'green pulse' : 'gray');
-    var t = document.getElementById('connText');
+    const t = document.getElementById('connText');
     if (t) t.textContent = txt;
 }
 
@@ -54,7 +54,7 @@ function setStatus(on, txt) {
  * @param {string} id - Modal overlay ID
  */
 function closeModal(id) {
-    var el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
     if (id === 'confirmModal') AppState.pendingDelete = null;
 }
@@ -64,7 +64,7 @@ function closeModal(id) {
  * @param {string} id - Modal overlay ID
  */
 function showModal(id) {
-    var el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (el) el.classList.remove('hidden');
 }
 
@@ -171,7 +171,7 @@ async function refreshAll() {
  * 顯示系統診斷資訊
  */
 async function diagnosis() {
-    var L = [];
+    const L = [];
     function log(m) { L.push(m); console.log('[DIAG]', m); }
     log('═══ v20 診斷 ═══');
     log('Auth: ' + (AppState.isAuthenticated ? '✅ ' + (AppState.currentUser?.email || '') : '❌ 未登入'));
@@ -185,15 +185,15 @@ async function diagnosis() {
     log('Mobile: ' + (isMobile() ? '📱 YES' : '🖥️ NO') + ' (' + window.innerWidth + 'px)');
     if (AppState.supabase) {
         try {
-            var r3 = await AppState.supabase.from('species_list').select('*', { count: 'exact', head: true });
+            const r3 = await AppState.supabase.from('species_list').select('*', { count: 'exact', head: true });
             log('species_list: ' + (r3.error ? '❌' : '✅ ' + (r3.count || 0)));
         } catch(e) { log('species_list: ❌ ' + e.message); }
         try {
-            var r = await AppState.supabase.from('projects').select('count', { count: 'exact', head: true });
+            const r = await AppState.supabase.from('projects').select('count', { count: 'exact', head: true });
             log('projects: ' + (r.error ? '❌' : '✅ ' + (r.data?.[0]?.count ?? '?')));
         } catch(e) { log('projects: ❌ ' + e.message); }
         try {
-            var r2 = await AppState.supabase.from('trees').select('count', { count: 'exact', head: true });
+            const r2 = await AppState.supabase.from('trees').select('count', { count: 'exact', head: true });
             log('trees: ' + (r2.error ? '❌' : '✅ ' + (r2.data?.[0]?.count ?? '?')));
         } catch(e) { log('trees: ❌ ' + e.message); }
     } else {

@@ -52,11 +52,11 @@ function showGPSDialog() {
 function doCaptureGPS(stage) {
     if (!navigator.geolocation) return;
     AppState._gpsFallbackStage = stage;
-    var accEl = document.getElementById('gpsAccuracy');
+    const accEl = document.getElementById('gpsAccuracy');
     accEl.classList.add('hidden');
     accEl.textContent = '';
 
-    var options;
+    let options;
     if (stage === 0) {
         toast('🛰️ 高精度定位中...', 'warning');
         options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 };
@@ -70,9 +70,9 @@ function doCaptureGPS(stage) {
 
     navigator.geolocation.getCurrentPosition(
         function(pos) {
-            var lat = parseFloat(pos.coords.latitude.toFixed(7));
-            var lng = parseFloat(pos.coords.longitude.toFixed(7));
-            var acc = Math.round(pos.coords.accuracy);
+            const lat = parseFloat(pos.coords.latitude.toFixed(7));
+            const lng = parseFloat(pos.coords.longitude.toFixed(7));
+            const acc = Math.round(pos.coords.accuracy);
             document.getElementById('tree_latitude').value = lat;
             document.getElementById('tree_longitude').value = lng;
             _showAccuracy(acc, stage);
@@ -100,8 +100,8 @@ function doCaptureGPS(stage) {
  * @param {number} stage - GPS 階段
  */
 function _showAccuracy(acc, stage) {
-    var accEl = document.getElementById('gpsAccuracy');
-    var accCls, accIcon, accLabel;
+    const accEl = document.getElementById('gpsAccuracy');
+    let accCls, accIcon, accLabel;
     if (stage === 2) {
         accCls = 'approx'; accIcon = '🌐'; accLabel = 'IP 定位 (city-level, ±2-5km)';
     } else if (acc <= 10) {
@@ -125,8 +125,8 @@ function doIPGeolocation() {
         .then(function(r) { return r.json(); })
         .then(function(d) {
             if (d.latitude && d.longitude) {
-                var lat = parseFloat(parseFloat(d.latitude).toFixed(4));
-                var lng = parseFloat(parseFloat(d.longitude).toFixed(4));
+                const lat = parseFloat(parseFloat(d.latitude).toFixed(4));
+                const lng = parseFloat(parseFloat(d.longitude).toFixed(4));
                 document.getElementById('tree_latitude').value = lat;
                 document.getElementById('tree_longitude').value = lng;
                 _showAccuracy(5000, 2);
@@ -160,18 +160,18 @@ function openMapPicker() {
  * 初始化地圖揀位器
  */
 function _initMapPicker() {
-    var container = document.getElementById('mapPickerContainer');
+    const container = document.getElementById('mapPickerContainer');
     if (!container) return;
     if (AppState._pickerMap) { AppState._pickerMap.remove(); AppState._pickerMap = null; }
     AppState._pickerMarker = null;
     AppState._pickerMap = L.map('mapPickerContainer', { zoomControl: true, attributionControl: false }).setView(HK_CENTER, 15);
-    var pLayerCfg = LAYER_CONFIG[AppState._pickerCurrentLayer] || LAYER_CONFIG['dark'];
+    const pLayerCfg = LAYER_CONFIG[AppState._pickerCurrentLayer] || LAYER_CONFIG['dark'];
     AppState._pickerMap._currentTileLayer = L.tileLayer(pLayerCfg.url, pLayerCfg.options).addTo(AppState._pickerMap);
     document.querySelectorAll('#mapPickerModal .layer-toggle').forEach(function(b) {
         b.classList.toggle('active', b.dataset.layer === AppState._pickerCurrentLayer);
     });
-    var existingLat = parseFloat(document.getElementById('tree_latitude').value);
-    var existingLng = parseFloat(document.getElementById('tree_longitude').value);
+    const existingLat = parseFloat(document.getElementById('tree_latitude').value);
+    const existingLng = parseFloat(document.getElementById('tree_longitude').value);
     if (!isNaN(existingLat) && !isNaN(existingLng)) {
         AppState._pickerMap.setView([existingLat, existingLng], 18);
         _placePickerMarker(existingLat, existingLng);
@@ -189,7 +189,7 @@ function _initMapPicker() {
  */
 function _placePickerMarker(lat, lng) {
     if (AppState._pickerMarker) { AppState._pickerMap.removeLayer(AppState._pickerMarker); }
-    var icon = L.divIcon({
+    const icon = L.divIcon({
         className: 'custom-marker',
         html: '<div style="width:24px;height:24px;border-radius:50%;background:#a855f7;border:3px solid #fff;box-shadow:0 0 16px rgba(168,85,247,.8),0 3px 8px rgba(0,0,0,.5);font-size:14px;line-height:24px;text-align:center;color:#fff">📍</div>',
         iconSize: [24, 24], iconAnchor: [12, 24]
@@ -208,7 +208,7 @@ function confirmMapPicker() {
     if (AppState._pickerLat == null || AppState._pickerLng == null) return;
     document.getElementById('tree_latitude').value = AppState._pickerLat;
     document.getElementById('tree_longitude').value = AppState._pickerLng;
-    var accEl = document.getElementById('gpsAccuracy');
+    const accEl = document.getElementById('gpsAccuracy');
     accEl.textContent = '🗺️ 地圖揀位 (手動)';
     accEl.className = 'gps-accuracy map-pick';
     accEl.classList.remove('hidden');
@@ -236,7 +236,7 @@ function closeMapPicker() {
 function switchMainLayer(key) {
     if (!AppState.mapObj || !LAYER_CONFIG[key]) return;
     AppState._currentLayer = key;
-    var cfg = LAYER_CONFIG[key];
+    const cfg = LAYER_CONFIG[key];
     if (AppState.mapObj._currentTileLayer) AppState.mapObj.removeLayer(AppState.mapObj._currentTileLayer);
     AppState.mapObj._currentTileLayer = L.tileLayer(cfg.url, cfg.options).addTo(AppState.mapObj);
     document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b) {
@@ -251,7 +251,7 @@ function switchMainLayer(key) {
 function switchPickerLayer(key) {
     if (!AppState._pickerMap || !LAYER_CONFIG[key]) return;
     AppState._pickerCurrentLayer = key;
-    var cfg = LAYER_CONFIG[key];
+    const cfg = LAYER_CONFIG[key];
     if (AppState._pickerMap._currentTileLayer) AppState._pickerMap.removeLayer(AppState._pickerMap._currentTileLayer);
     AppState._pickerMap._currentTileLayer = L.tileLayer(cfg.url, cfg.options).addTo(AppState._pickerMap);
     document.querySelectorAll('#mapPickerModal .layer-toggle').forEach(function(b) {
@@ -273,9 +273,9 @@ function locateMe() {
     toast('📍 正在定位...', 'warning');
     navigator.geolocation.getCurrentPosition(
         function(pos) {
-            var lat = pos.coords.latitude, lng = pos.coords.longitude, acc = Math.round(pos.coords.accuracy);
+            const lat = pos.coords.latitude, lng = pos.coords.longitude, acc = Math.round(pos.coords.accuracy);
             if (AppState._locateMarker) { AppState.mapObj.removeLayer(AppState._locateMarker); }
-            var userIcon = L.divIcon({
+            const userIcon = L.divIcon({
                 className: 'custom-marker',
                 html: '<div style="width:18px;height:18px;border-radius:50%;background:#6366f1;border:3px solid #fff;box-shadow:0 0 12px rgba(99,102,241,.8),0 2px 6px rgba(0,0,0,.5)"></div>',
                 iconSize: [18, 18], iconAnchor: [9, 9]

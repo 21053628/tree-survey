@@ -24,9 +24,9 @@ function destroyMap() {
         b.classList.add('on');
         b.classList.remove('off');
     });
-    var si = document.getElementById('mapSearchInput');
+    const si = document.getElementById('mapSearchInput');
     if (si) si.value = '';
-    var st = document.getElementById('mapStatus');
+    const st = document.getElementById('mapStatus');
     if (st) st.textContent = '';
 }
 
@@ -40,12 +40,98 @@ function destroyMap() {
  * @returns {string} hex color
  */
 function getMarkerColor(health) {
-    var h = (health || '').toLowerCase();
+    const h = (health || '').toLowerCase();
     if (h === 'good') return '#10b981';
     if (h === 'fair') return '#f59e0b';
     if (h === 'poor') return '#ef4444';
     if (h === 'dead') return '#6b7280';
     return '#94a3b8';
+}
+
+// ============================================================
+// Popup 內容建立（純 DOM API，防 XSS）
+// ============================================================
+
+/**
+ * 安全建立樹木 Popup 內容
+ * 所有使用者資料透過 textContent / createTextNode 寫入，永不解析為 HTML
+ * @param {object} t - 樹木資料
+ * @returns {HTMLElement}
+ */
+function buildTreePopupContent(t) {
+    const container = document.createElement('div');
+
+    // Row 1: Tree ID (bold, gold color)
+    const idEl = document.createElement('strong');
+    idEl.textContent = t.treeIdNo || '—';
+    idEl.style.color = '#fbbf24';
+    container.appendChild(idEl);
+    container.appendChild(document.createElement('br'));
+
+    // Row 2: Botanical Name (italic) + Chinese Name
+    const italicEl = document.createElement('i');
+    italicEl.textContent = t.botanicalName || '';
+    container.appendChild(italicEl);
+    container.appendChild(document.createTextNode(' ' + (t.chineseName || '')));
+    container.appendChild(document.createElement('br'));
+
+    // Row 3: DBH (optional)
+    if (t.trunkDiameter) {
+        container.appendChild(document.createTextNode('📐 DBH: ' + t.trunkDiameter + 'mm'));
+        container.appendChild(document.createElement('br'));
+    }
+
+    // Row 4: Height (optional)
+    if (t.overallHeight) {
+        container.appendChild(document.createTextNode('📏 H: ' + t.overallHeight + 'm'));
+        container.appendChild(document.createElement('br'));
+    }
+
+    // Row 5: Crown (optional)
+    if (t.crownSpread) {
+        container.appendChild(document.createTextNode('🌳 Crown: ' + t.crownSpread + 'm'));
+        container.appendChild(document.createElement('br'));
+    }
+
+    // Row 6: Health + Structural
+    container.appendChild(document.createTextNode('💚 ' + (t.healthCondition || '—') + ' | 🏗️ ' + (t.structuralCondition || '—')));
+    container.appendChild(document.createElement('br'));
+
+    // Row 7: GPS Coordinates
+    const lat = Number(t.latitude), lng = Number(t.longitude);
+    container.appendChild(document.createTextNode('📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6)));
+    container.appendChild(document.createElement('br'));
+
+    // Row 8: Photo Strip placeholder
+    const stripDiv = document.createElement('div');
+    stripDiv.className = 'popup-photo-strip';
+    stripDiv.setAttribute('data-tree-db-id', t.id);
+    const stripLoading = document.createElement('div');
+    stripLoading.className = 'strip-loading';
+    stripLoading.textContent = '📷 點擊載入照片...';
+    stripDiv.appendChild(stripLoading);
+    container.appendChild(stripDiv);
+
+    // Row 9: Action buttons
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'pop-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✏️ 編輯';
+    editBtn.setAttribute('data-action', 'edit-tree');
+    editBtn.setAttribute('data-tree-id', t.id);
+    actionsDiv.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '🗑 刪除';
+    delBtn.style.cssText = 'color:#f87171;border-color:rgba(239,68,68,.4)';
+    delBtn.setAttribute('data-action', 'delete-tree');
+    delBtn.setAttribute('data-tree-id', t.id);
+    delBtn.setAttribute('data-tree-name', t.treeIdNo || t.id);
+    actionsDiv.appendChild(delBtn);
+
+    container.appendChild(actionsDiv);
+    return container;
 }
 
 // ============================================================
@@ -70,7 +156,7 @@ function renderMap() {
 async function _doRenderMapFromDB() {
     if (!AppState.supabase || !AppState.currentProjectId) return;
     try {
-        var allTrees = await fetchAllPages(
+        const allTrees = await fetchAllPages(
             AppState.supabase.from('trees')
                 .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude')
                 .eq('projectId', AppState.currentProjectId)
@@ -89,18 +175,18 @@ async function _doRenderMapFromDB() {
  * @param {object[]} trees - 樹木資料陣列
  */
 function _doRenderMap(trees) {
-    var container = document.getElementById('mapContainer');
+    const container = document.getElementById('mapContainer');
     if (!container) return;
     destroyMap();
     AppState.mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, MAP_DEFAULT_ZOOM);
-    var layerCfg = LAYER_CONFIG[AppState._currentLayer] || LAYER_CONFIG['dark'];
+    const layerCfg = LAYER_CONFIG[AppState._currentLayer] || LAYER_CONFIG['dark'];
     AppState.mapObj._currentTileLayer = L.tileLayer(layerCfg.url, layerCfg.options).addTo(AppState.mapObj);
     document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b) {
         b.classList.toggle('active', b.dataset.layer === AppState._currentLayer);
     });
 
     /** @type {object[]} */
-    var withCoords = trees.filter(function(t) {
+    const withCoords = trees.filter(function(t) {
         return t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude));
     });
     document.getElementById('sProjectMappedCount').textContent = withCoords.length;
@@ -111,16 +197,16 @@ function _doRenderMap(trees) {
         return;
     }
 
-    var bounds = [];
+    const bounds = [];
     withCoords.forEach(function(t) {
-        var lat = Number(t.latitude), lng = Number(t.longitude);
-        var color = getMarkerColor(t.healthCondition);
-        var icon = L.divIcon({
+        const lat = Number(t.latitude), lng = Number(t.longitude);
+        const color = getMarkerColor(t.healthCondition);
+        const icon = L.divIcon({
             className: 'custom-marker',
             html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',
             iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
         });
-        var marker = L.marker([lat, lng], { icon: icon }).addTo(AppState.mapObj);
+        const marker = L.marker([lat, lng], { icon: icon }).addTo(AppState.mapObj);
         marker._treeId = t.treeIdNo || '';
         marker._health = t.healthCondition || '';
         marker._botanicalName = t.botanicalName || '';
@@ -129,20 +215,7 @@ function _doRenderMap(trees) {
         marker.bindTooltip((t.treeIdNo || '?'), {
             permanent: true, direction: 'top', className: 'tree-label', offset: [0, -8]
         });
-        marker.bindPopup(
-            '<strong>' + esc(t.treeIdNo || '—') + '</strong><br>' +
-            '<i>' + esc(t.botanicalName || '') + '</i> ' + esc(t.chineseName || '') + '<br>' +
-            (t.trunkDiameter ? '📐 DBH: ' + esc(t.trunkDiameter) + 'mm<br>' : '') +
-            (t.overallHeight ? '📏 H: ' + esc(t.overallHeight) + 'm<br>' : '') +
-            (t.crownSpread ? '🌳 Crown: ' + esc(t.crownSpread) + 'm<br>' : '') +
-            '💚 ' + esc(t.healthCondition || '—') + ' | 🏗️ ' + esc(t.structuralCondition || '—') + '<br>' +
-            '📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
-            '<div class="popup-photo-strip" data-tree-db-id="' + esc(t.id) + '"><div class="strip-loading">📷 點擊載入照片...</div></div>' +
-            '<div class="pop-actions">' +
-            '<button data-action="edit-tree" data-tree-id="' + esc(t.id) + '">✏️ 編輯</button>' +
-            '<button data-action="delete-tree" data-tree-id="' + esc(t.id) + '" data-tree-name="' + esc(t.treeIdNo || t.id) + '" style="color:#f87171;border-color:rgba(239,68,68,.4)">🗑 刪除</button>' +
-            '</div>'
-        );
+        marker.bindPopup(buildTreePopupContent(t));
         AppState.mapMarkers.push(marker);
         if (t.id) AppState.markerLookup[t.id] = marker;
         bounds.push([lat, lng]);
@@ -150,30 +223,30 @@ function _doRenderMap(trees) {
 
     // Popup 打開時載入照片 strip + 綁定按鈕事件（事件委派，取代 inline onclick）
     AppState.mapObj.on('popupopen', function(e) {
-        var popupEl = e.popup.getElement();
+        const popupEl = e.popup.getElement();
         if (popupEl) {
-            var strip = popupEl.querySelector('.popup-photo-strip');
+            const strip = popupEl.querySelector('.popup-photo-strip');
             if (strip) {
-                var treeId = strip.getAttribute('data-tree-db-id');
+                const treeId = strip.getAttribute('data-tree-db-id');
                 if (treeId && typeof loadPhotosIntoPopup === 'function') {
                     loadPhotosIntoPopup(treeId, strip);
                 }
             }
             // 事件委派：處理 popup 內的按鈕點擊
-            var editBtn = popupEl.querySelector('[data-action="edit-tree"]');
+            const editBtn = popupEl.querySelector('[data-action="edit-tree"]');
             if (editBtn && !editBtn._bound) {
                 editBtn._bound = true;
                 editBtn.addEventListener('click', function() {
-                    var id = this.getAttribute('data-tree-id');
+                    const id = this.getAttribute('data-tree-id');
                     if (id) editTree(id);
                 });
             }
-            var delBtn = popupEl.querySelector('[data-action="delete-tree"]');
+            const delBtn = popupEl.querySelector('[data-action="delete-tree"]');
             if (delBtn && !delBtn._bound) {
                 delBtn._bound = true;
                 delBtn.addEventListener('click', function() {
-                    var id = this.getAttribute('data-tree-id');
-                    var name = this.getAttribute('data-tree-name');
+                    const id = this.getAttribute('data-tree-id');
+                    const name = this.getAttribute('data-tree-name');
                     if (id) confirmDeleteTree(id, name || id);
                 });
             }
@@ -182,18 +255,18 @@ function _doRenderMap(trees) {
 
     // 處理待定位的樹（來自列表點擊）
     if (AppState._pendingFocusTreeId) {
-        var focusMarker = AppState.markerLookup[AppState._pendingFocusTreeId];
+        const focusMarker = AppState.markerLookup[AppState._pendingFocusTreeId];
         if (focusMarker) {
             AppState.mapObj.setView(focusMarker.getLatLng(), MAP_FOCUS_ZOOM, { animate: false });
             setTimeout(function() { focusMarker.openPopup(); }, DELAY_FOCUS_OPEN_POPUP);
-            var focusTooltip = focusMarker.getTooltip();
+            const focusTooltip = focusMarker.getTooltip();
             if (focusTooltip) {
                 setTimeout(function() {
-                    var fe = focusTooltip.getElement();
+                    const fe = focusTooltip.getElement();
                     if (fe) { fe.classList.add('highlight'); setTimeout(function() { fe.classList.remove('highlight'); }, DELAY_GPS_WARN); }
                 }, DELAY_FOCUS_LABEL);
             }
-            var focusIconEl = focusMarker.getElement();
+            const focusIconEl = focusMarker.getElement();
             if (focusIconEl) {
                 setTimeout(function() {
                     focusIconEl.style.transition = 'transform 0.3s ease';
@@ -201,9 +274,9 @@ function _doRenderMap(trees) {
                     setTimeout(function() { focusIconEl.style.transform = 'translateY(0)'; }, DELAY_FOCUS_OPEN_POPUP);
                 }, DELAY_FOCUS_ICON_ANIM);
             }
-            var si = document.getElementById('mapSearchInput');
+            const si = document.getElementById('mapSearchInput');
             if (si) si.value = focusMarker._treeId || AppState._pendingFocusTreeId;
-            var focusTreeData = AppState._cachedTreeData.find(function(t) { return t.id === AppState._pendingFocusTreeId; });
+            const focusTreeData = AppState._cachedTreeData.find(function(t) { return t.id === AppState._pendingFocusTreeId; });
             if (focusTreeData && focusTreeData.healthCondition && AppState._hiddenHealth[focusTreeData.healthCondition]) {
                 toggleHealthFilter(focusTreeData.healthCondition, null);
             }
@@ -260,7 +333,7 @@ function _focusTreeOnMapNow(treeId, retryCount) {
     if (AppState._focusResolved) {
         AppState._focusInProgress = false;
         if (!AppState.markerLookup[treeId]) {
-            var tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
+            const tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
             if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
             else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
         } else {
@@ -278,14 +351,14 @@ function _focusTreeOnMapNow(treeId, retryCount) {
         }
         return;
     }
-    var marker = AppState.markerLookup[treeId];
+    const marker = AppState.markerLookup[treeId];
     if (!marker) {
         if (retryCount < MAP_FOCUS_RETRY_MAX) {
             setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, MAP_RETRY_INTERVAL_MS);
         } else {
             AppState._focusResolved = true;
             AppState._focusInProgress = false;
-            var tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
+            const tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
             if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
             else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
         }
@@ -313,16 +386,16 @@ function searchMapTrees() {
  */
 function applyMapFilters() {
     if (!AppState.mapObj) return;
-    var query = (document.getElementById('mapSearchInput')?.value || '').trim().toLowerCase();
-    var visibleCount = 0;
+    const query = (document.getElementById('mapSearchInput')?.value || '').trim().toLowerCase();
+    let visibleCount = 0;
     AppState.mapMarkers.forEach(function(m) {
-        var tid = (m._treeId || '').toLowerCase();
-        var bname = (m._botanicalName || '').toLowerCase();
-        var cname = (m._chineseName || '').toLowerCase();
-        var health = m._health || '';
-        var hiddenByHealth = AppState._hiddenHealth[health] || false;
-        var matchesSearch = !query || tid.indexOf(query) >= 0 || bname.indexOf(query) >= 0 || cname.indexOf(query) >= 0;
-        var visible = !hiddenByHealth && matchesSearch;
+        const tid = (m._treeId || '').toLowerCase();
+        const bname = (m._botanicalName || '').toLowerCase();
+        const cname = (m._chineseName || '').toLowerCase();
+        const health = m._health || '';
+        const hiddenByHealth = AppState._hiddenHealth[health] || false;
+        const matchesSearch = !query || tid.indexOf(query) >= 0 || bname.indexOf(query) >= 0 || cname.indexOf(query) >= 0;
+        const visible = !hiddenByHealth && matchesSearch;
         if (visible) { m.addTo(AppState.mapObj); visibleCount++; }
         else { AppState.mapObj.removeLayer(m); }
     });

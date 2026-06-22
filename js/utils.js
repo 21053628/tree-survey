@@ -9,11 +9,11 @@
  */
 function uuid() {
     try { return crypto.randomUUID(); } catch(e) {
-        var arr = new Uint8Array(16);
+        const arr = new Uint8Array(16);
         crypto.getRandomValues(arr);
         arr[6] = (arr[6] & 0x0f) | 0x40;
         arr[8] = (arr[8] & 0x3f) | 0x80;
-        var hex = Array.from(arr, function(b) { return b.toString(16).padStart(2, '0'); });
+        const hex = Array.from(arr, function(b) { return b.toString(16).padStart(2, '0'); });
         return hex[0]+hex[1]+hex[2]+hex[3]+'-'+hex[4]+hex[5]+'-'+hex[6]+hex[7]+'-'+hex[8]+hex[9]+'-'+hex[10]+hex[11]+hex[12]+hex[13]+hex[14]+hex[15];
     }
 }
@@ -49,8 +49,8 @@ function isMobile() {
  * @returns {boolean}
  */
 function canUseGPS() {
-    var proto = window.location.protocol;
-    var host = window.location.hostname;
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
     if (proto === 'https:') return true;
     if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
     return false;
@@ -61,9 +61,9 @@ function canUseGPS() {
  * @returns {string}
  */
 function getProtocolWarningHTML() {
-    var proto = window.location.protocol;
-    var host = window.location.hostname;
-    var msg = '<strong>⚠️ GPS 定位不適用</strong><br>';
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+    let msg = '<strong>⚠️ GPS 定位不適用</strong><br>';
     if (proto === 'file:') { msg += '你正由檔案開啟此頁面（file://），Chrome/Safari 會封鎖 GPS。<br>'; }
     else if (proto === 'http:' && host !== 'localhost' && host !== '127.0.0.1') { msg += '你正經 HTTP 開啟（非 localhost），瀏覽器封鎖 GPS。<br>'; }
     else { msg += '當前環境不支援 GPS 定位。<br>'; }
@@ -142,13 +142,13 @@ function recBadge(v) {
  */
 function debounce(fn, ms) {
     ms = ms || DEBOUNCE_DELAY;
-    var timer = null;
-    var pendingPromise = null;
-    var pendingResolve = null;
-    var pendingReject = null;
+    let timer = null;
+    let pendingPromise = null;
+    let pendingResolve = null;
+    let pendingReject = null;
     return function() {
-        var ctx = this;
-        var args = arguments;
+        const ctx = this;
+        const args = arguments;
         if (timer) clearTimeout(timer);
         if (pendingReject) {
             pendingReject(new Error('debounced'));
@@ -161,7 +161,7 @@ function debounce(fn, ms) {
             });
         }
         timer = setTimeout(function() {
-            var result;
+            let result;
             try {
                 result = fn.apply(ctx, args);
             } catch(e) {
@@ -189,10 +189,10 @@ function debounce(fn, ms) {
  */
 function createCache(ttlMs) {
     ttlMs = ttlMs || CACHE_TTL;
-    var store = {};
+    let store = {};
     return {
         get: function(key) {
-            var entry = store[key];
+            const entry = store[key];
             if (!entry) return null;
             if (Date.now() - entry.time > ttlMs) { delete store[key]; return null; }
             return entry.value;
@@ -225,11 +225,11 @@ function createCache(ttlMs) {
  */
 async function fetchAllPages(queryBuilder, pageSize) {
     pageSize = pageSize || FETCH_PAGE_SIZE;
-    var allData = [];
-    var from = 0;
+    const allData = [];
+    let from = 0;
     try {
         while (true) {
-            var r = await queryBuilder.range(from, from + pageSize - 1);
+            const r = await queryBuilder.range(from, from + pageSize - 1);
             if (r.error) {
                 console.warn('fetchAllPages error:', r.error.message);
                 break;

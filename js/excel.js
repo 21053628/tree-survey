@@ -18,7 +18,7 @@ async function exportProjectTreesExcel() {
     if (!AppState.currentProjectId || !xlsxReady()) { toast('⚠️ Excel library 未載入', 'warning'); return; }
     toast('📥 正在匯出...', 'warning');
     try {
-        var allTrees = await fetchAllPages(
+        const allTrees = await fetchAllPages(
             AppState.supabase.from('trees')
                 .select('*')
                 .eq('projectId', AppState.currentProjectId)
@@ -27,7 +27,7 @@ async function exportProjectTreesExcel() {
         if (allTrees.length === 0) { toast('⚠️ 冇樹木資料', 'warning'); return; }
 
         /** @type {object[]} */
-        var rows = allTrees.map(function(t) {
+        const rows = allTrees.map(function(t) {
             return {
                 'Tree ID': t.treeIdNo || '',
                 'Species (Chinese Name)': t.chineseName || '',
@@ -45,8 +45,8 @@ async function exportProjectTreesExcel() {
                 'Longitude': t.longitude || ''
             };
         });
-        var ws = XLSX.utils.json_to_sheet(rows);
-        var wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Tree Survey');
         XLSX.writeFile(wb, (AppState.currentProjectName || 'project') + '_TreeSurvey_' + todayStr() + '.xlsx');
         toast('✅ 已匯出 ' + allTrees.length + ' 棵樹', 'success');
@@ -67,21 +67,21 @@ async function exportAllProjectsExcel() {
     toast('📥 正在匯出全部...', 'warning');
     try {
         // 載入全部專案（使用 fetchAllPages）
-        var allProjects = await fetchAllPages(
+        const allProjects = await fetchAllPages(
             AppState.supabase.from('projects')
                 .select('*')
                 .order('name', { ascending: true })
         );
 
-        var wb = XLSX.utils.book_new();
+        const wb = XLSX.utils.book_new();
         /** @type {object[]} */
-        var summaryRows = [];
-        var totalTrees = 0;
+        const summaryRows = [];
+        let totalTrees = 0;
 
-        for (var i = 0; i < allProjects.length; i++) {
-            var proj = allProjects[i];
+        for (let i = 0; i < allProjects.length; i++) {
+            const proj = allProjects[i];
             // 載入此專案全部樹木
-            var allTrees = await fetchAllPages(
+            const allTrees = await fetchAllPages(
                 AppState.supabase.from('trees')
                     .select('*')
                     .eq('projectId', proj.id)
@@ -97,7 +97,7 @@ async function exportAllProjectsExcel() {
 
             if (allTrees.length > 0) {
                 /** @type {object[]} */
-                var treeRows = allTrees.map(function(t) {
+                const treeRows = allTrees.map(function(t) {
                     return {
                         'Tree ID': t.treeIdNo || '',
                         'Species (Botanical Name)': t.botanicalName || '',
@@ -115,7 +115,7 @@ async function exportAllProjectsExcel() {
                         'Longitude': t.longitude || ''
                     };
                 });
-                var sn = (proj.name || 'Project').substring(0, 28).replace(/[\\/*?[\]:]/g, '');
+                const sn = (proj.name || 'Project').substring(0, 28).replace(/[\\/*?[\]:]/g, '');
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(treeRows), sn);
             }
         }

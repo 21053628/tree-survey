@@ -5,7 +5,7 @@
  * 集中式命名空間，消除全域函數污染。
  * 所有子命名空間由各模組檔案填充。
  */
-var TreeApp = {
+const TreeApp = {
     ui: {},
     dom: {},
     utils: {},

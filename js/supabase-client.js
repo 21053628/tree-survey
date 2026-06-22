@@ -14,7 +14,7 @@ function initSupabase() {
     }
     try {
         AppState.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'public' } });
-        var displayEl = document.getElementById('projectUrlDisplay');
+        const displayEl = document.getElementById('projectUrlDisplay');
         if (displayEl) displayEl.textContent = SUPABASE_URL.replace('https://','');
         setStatus(true, '✅ 連線成功');
         AppState.initDone = true;
@@ -36,9 +36,9 @@ function initSupabase() {
  */
 function handleSupabaseError(error, context) {
     context = context || '';
-    var msg = error.message || '';
-    var code = error.code || '';
-    var details = error.details || '';
+    const msg = error.message || '';
+    const code = error.code || '';
+    const details = error.details || '';
 
     // 分類處理
     if (msg.indexOf('JWT expired') >= 0 || msg.indexOf('token') >= 0 || code === 'PGRST301') {
@@ -64,7 +64,7 @@ function handleSupabaseError(error, context) {
     }
 
     // 預設
-    var errMsg = '❌ ';
+    let errMsg = '❌ ';
     if (context) errMsg += context + '：';
     errMsg += msg;
     toast(errMsg, 'error');
@@ -79,7 +79,7 @@ function handleSupabaseError(error, context) {
  */
 async function safeQuery(queryPromise, context) {
     try {
-        var result = await queryPromise;
+        const result = await queryPromise;
         if (result.error) {
             handleSupabaseError(result.error, context);
         }
@@ -101,7 +101,7 @@ async function safeQuery(queryPromise, context) {
  * @returns {Promise<*|null>} 解包後的 data，或 null（發生錯誤時）
  */
 async function q(queryPromise, context) {
-    var result = await safeQuery(queryPromise, context);
+    const result = await safeQuery(queryPromise, context);
     if (result.error) return null;
     return result.data;
 }

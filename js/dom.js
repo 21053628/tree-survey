@@ -18,7 +18,7 @@
  * @returns {HTMLElement}
  */
 function el(tag, className, attrs) {
-    var e = document.createElement(tag);
+    const e = document.createElement(tag);
     if (className) e.className = className;
     if (attrs) {
         Object.keys(attrs).forEach(function(k) {
@@ -36,7 +36,7 @@ function el(tag, className, attrs) {
  * @returns {HTMLElement}
  */
 function elText(tag, text, className) {
-    var e = document.createElement(tag);
+    const e = document.createElement(tag);
     if (className) e.className = className;
     e.textContent = text != null ? String(text) : '';
     return e;
@@ -63,7 +63,7 @@ function setText(elem, value) {
  * @returns {HTMLButtonElement}
  */
 function elButton(label, className, onClick) {
-    var btn = document.createElement('button');
+    const btn = document.createElement('button');
     btn.className = className || '';
     btn.textContent = label;
     if (onClick) {
@@ -87,12 +87,12 @@ function elButton(label, className, onClick) {
  */
 function elBadge(value, cssClass) {
     if (!value) {
-        var span = document.createElement('span');
+        const span = document.createElement('span');
         span.className = 'null-cell';
         span.textContent = '—';
         return span;
     }
-    var span = document.createElement('span');
+    const span = document.createElement('span');
     span.className = 'tc-badge ' + (cssClass || '');
     span.textContent = value;
     return span;
@@ -141,7 +141,7 @@ function recBadgeEl(v) {
  * @returns {HTMLTableCellElement}
  */
 function elTd(content, className) {
-    var td = document.createElement('td');
+    const td = document.createElement('td');
     if (className) td.className = className;
     if (content instanceof Node) {
         td.appendChild(content);
@@ -157,7 +157,7 @@ function elTd(content, className) {
  * @returns {HTMLTableRowElement}
  */
 function elTr(cells) {
-    var tr = document.createElement('tr');
+    const tr = document.createElement('tr');
     cells.forEach(function(td) { tr.appendChild(td); });
     return tr;
 }
