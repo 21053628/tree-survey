@@ -208,8 +208,125 @@ CREATE POLICY "Authenticated users can read species_list"
  */
 
 -- ============================================================
+-- 第五部分：多租戶資料隔離 (Multi-Tenant Isolation)
+-- ============================================================
+
+-- 為 projects 加入 user_id 欄位
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 為 trees 加入 user_id 欄位
+ALTER TABLE trees ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 為 tree_photos 加入 user_id 欄位
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- 建立索引加速 user_id 查詢
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_trees_user_id ON trees(user_id);
+CREATE INDEX IF NOT EXISTS idx_tree_photos_user_id ON tree_photos(user_id);
+
+-- 重建所有 RLS Policy，加入 user_id 過濾
+-- （DROP 舊的 USING (true) 版本，重建為 user_id = auth.uid()）
+
+-- --- projects ---
+DROP POLICY IF EXISTS "Authenticated users can read projects" ON projects;
+DROP POLICY IF EXISTS "Authenticated users can insert projects" ON projects;
+DROP POLICY IF EXISTS "Authenticated users can update projects" ON projects;
+DROP POLICY IF EXISTS "Authenticated users can delete projects" ON projects;
+
+CREATE POLICY "Users can read own projects"
+    ON projects FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own projects"
+    ON projects FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own projects"
+    ON projects FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own projects"
+    ON projects FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
+
+-- --- trees ---
+DROP POLICY IF EXISTS "Authenticated users can read trees" ON trees;
+DROP POLICY IF EXISTS "Authenticated users can insert trees" ON trees;
+DROP POLICY IF EXISTS "Authenticated users can update trees" ON trees;
+DROP POLICY IF EXISTS "Authenticated users can delete trees" ON trees;
+
+CREATE POLICY "Users can read own trees"
+    ON trees FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own trees"
+    ON trees FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own trees"
+    ON trees FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own trees"
+    ON trees FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
+
+-- --- tree_photos ---
+DROP POLICY IF EXISTS "Authenticated users can read tree_photos" ON tree_photos;
+DROP POLICY IF EXISTS "Authenticated users can insert tree_photos" ON tree_photos;
+DROP POLICY IF EXISTS "Authenticated users can update tree_photos" ON tree_photos;
+DROP POLICY IF EXISTS "Authenticated users can delete tree_photos" ON tree_photos;
+
+CREATE POLICY "Users can read own tree_photos"
+    ON tree_photos FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own tree_photos"
+    ON tree_photos FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own tree_photos"
+    ON tree_photos FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own tree_photos"
+    ON tree_photos FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
+
+-- ============================================================
+-- 第六部分：CASCADE 外鍵約束
+-- ============================================================
+
+-- 確保刪除專案時自動清除關聯的樹木和照片
+ALTER TABLE trees 
+  DROP CONSTRAINT IF EXISTS trees_projectid_fkey,
+  ADD CONSTRAINT trees_projectid_fkey 
+    FOREIGN KEY ("projectId") REFERENCES projects(id) ON DELETE CASCADE;
+
+ALTER TABLE tree_photos 
+  DROP CONSTRAINT IF EXISTS tree_photos_tree_id_fkey,
+  ADD CONSTRAINT tree_photos_tree_id_fkey 
+    FOREIGN KEY (tree_id) REFERENCES trees(id) ON DELETE CASCADE;
+
+-- trees 刪除時自動清除 tree_photos（進一步防護）
+ALTER TABLE tree_photos 
+  DROP CONSTRAINT IF EXISTS tree_photos_project_id_fkey,
+  ADD CONSTRAINT tree_photos_project_id_fkey 
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+-- ============================================================
 -- 完成！
 -- 執行後請回到 index.html 重新整理頁面。
 -- 你需要在 Supabase Authentication 頁面手動建立員工帳號：
 --   Authentication → Users → Add User → 輸入 Email 和 Password
+-- 
+-- ⚠️ 重要提醒：
+-- 1. 舊有資料可能沒有 user_id，你可以用以下 SQL 將它們指定給特定用戶：
+--    UPDATE projects SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
+--    UPDATE trees SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
+-- 2. 到 Supabase Storage 也要加 RLS policy（見第四部分註解）
 -- ============================================================

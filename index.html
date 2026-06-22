@@ -582,6 +582,7 @@
             <div class="form-group full"><label>📝 Remarks</label><textarea id="tree_remarks" rows="2" placeholder="附加備註..."></textarea></div>
         </div>
         <input type="hidden" id="tree_editId">
+        <input type="hidden" id="tree_editUpdatedAt">
         <!-- PHOTO SECTION -->
         <div class="photo-section" id="treePhotoSection">
             <div class="photo-section-header">
@@ -703,10 +704,12 @@ var currentUser = null;
 // ============================================================
 function uuid() {
     try { return crypto.randomUUID(); } catch(e) {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0;
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-        });
+        var arr = new Uint8Array(16);
+        crypto.getRandomValues(arr);
+        arr[6] = (arr[6] & 0x0f) | 0x40;
+        arr[8] = (arr[8] & 0x3f) | 0x80;
+        var hex = Array.from(arr, function(b) { return b.toString(16).padStart(2, '0'); });
+        return hex[0]+hex[1]+hex[2]+hex[3]+'-'+hex[4]+hex[5]+'-'+hex[6]+hex[7]+'-'+hex[8]+hex[9]+'-'+hex[10]+hex[11]+hex[12]+hex[13]+hex[14]+hex[15];
     }
 }
 
@@ -727,7 +730,7 @@ function toast(msg, type) {
     setTimeout(function(){ d.style.opacity = '0'; d.style.transition = 'opacity 0.3s'; }, 3000);
     setTimeout(function(){ d.remove(); }, 3500);
 }
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'&#39;'); }
 function sdkReady() { return !!(window.supabase && typeof window.supabase.createClient === 'function'); }
 function xlsxReady() { return !!(window.XLSX && typeof window.XLSX.utils === 'object'); }
 function leafletReady() { return !!(window.L && typeof window.L.map === 'function'); }
@@ -1637,7 +1640,7 @@ function editProject(id) {
 async function saveProject() {
     var nm=document.getElementById('proj_name').value.trim(); if (!nm) { toast('⚠️ 請輸入名稱','warning'); return; }
     var eid=document.getElementById('proj_editId').value;
-    var p={name:nm,surveyDate:document.getElementById('proj_surveyDate').value,notes:document.getElementById('proj_notes').value.trim()};
+    var p={name:nm,surveyDate:document.getElementById('proj_surveyDate').value,notes:document.getElementById('proj_notes').value.trim(),user_id:currentUser?.id};
     if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }
     var r=eid ? await supabase.from('projects').update(p).eq('id',eid).select() : await supabase.from('projects').insert(p).select();
     if (r.error) { toast('❌ '+r.error.message,'error'); return; }
@@ -1683,6 +1686,7 @@ function editTree(id) {
         document.getElementById('tree_recommendation').value=d.recommendation||''; document.getElementById('tree_remarks').value=d.remarks||'';
         document.getElementById('tree_latitude').value = (d.latitude != null) ? d.latitude : '';
         document.getElementById('tree_longitude').value = (d.longitude != null) ? d.longitude : '';
+        document.getElementById('tree_editUpdatedAt').value = d.updatedAt || '';
         var accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
         var warn = document.getElementById('gpsProtocolWarn');
         if (warn) {
@@ -1718,7 +1722,8 @@ async function saveTree() {
         recommendation:document.getElementById('tree_recommendation').value,
         remarks:document.getElementById('tree_remarks').value.trim(),
         latitude: latNum, longitude: lngNum,
-        syncStatus:eid?'pending':'local', updatedAt:new Date().toISOString()
+        syncStatus:eid?'pending':'local', updatedAt:new Date().toISOString(),
+        user_id: currentUser?.id
     };
     if (!eid) { p.id=uuid(); p.created_at=new Date().toISOString(); }
     var r=eid ? await supabase.from('trees').update(p).eq('id',eid).select() : await supabase.from('trees').insert(p).select();
@@ -1741,7 +1746,7 @@ var confirmBtnEl = document.getElementById('confirmBtn');
 if (confirmBtnEl) confirmBtnEl.addEventListener('click',async function(){
     if (!pendingDelete||!supabase) return;
     try {
-        if (pendingDelete.type==='project') { await supabase.from('trees').delete().eq('projectId',pendingDelete.id); await supabase.from('projects').delete().eq('id',pendingDelete.id); }
+        if (pendingDelete.type==='project') { await supabase.from('projects').delete().eq('id',pendingDelete.id); }
         else if (pendingDelete.type==='tree') { await supabase.from('trees').delete().eq('id',pendingDelete.id); }
         toast('✅ 已刪除');
     } catch(e) { toast('❌ '+e.message,'error'); }
@@ -1889,6 +1894,7 @@ async function processAndUploadPhoto(file) {
             id: uuid(),
             tree_id: _photoCurrentTreeId,
             project_id: currentProjectId,
+            user_id: currentUser?.id,
             file_name: file.name,
             storage_path: storagePath,
             caption: '',
