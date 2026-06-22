@@ -50,6 +50,9 @@
         .header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;transform:translateZ(0)}
         .header-left{display:flex;align-items:center;gap:8px}
         .header-logo{font-size:1.1rem;font-weight:700}
+        .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .header-user{font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:6px}
+        .header-user .user-email{color:#a5b4fc;font-weight:600}
         .header-status{font-size:.72rem;display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px}
         .header-status.online{background:var(--green-bg);color:var(--green)}
         .header-status.offline{background:rgba(148,163,184,.1);color:#94a3b8}
@@ -287,7 +290,29 @@
         .photo-viewer-nav .photo-counter{color:var(--text2);font-size:.8rem;min-width:60px;text-align:center}
         .photo-viewer-caption{margin-top:10px;font-size:.82rem;color:var(--text2);text-align:center;font-style:italic}
         .photo-upload-btn{display:inline-flex;align-items:center;gap:5px}.photo-upload-btn input[type=file]{display:none}
-@media(max-width:480px){.photo-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}}
+        /* LOGIN OVERLAY */
+        .login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+        .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+        .login-card .login-logo{text-align:center;font-size:2.5rem;margin-bottom:4px}
+        .login-card h1{text-align:center;font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:6px}
+        .login-card .login-sub{text-align:center;font-size:.78rem;color:var(--text2);margin-bottom:24px}
+        .login-card .login-field{margin-bottom:16px}
+        .login-card .login-field label{display:block;font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:5px}
+        .login-card .login-field input{width:100%;padding:13px 15px;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9rem;font-family:inherit;outline:none;transition:border-color .2s;min-height:48px}
+        .login-card .login-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+        .login-card .login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:10px 14px;font-size:.8rem;color:#fca5a5;margin-bottom:16px;display:none;line-height:1.5}
+        .login-card .login-btn{width:100%;padding:13px;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer;border:none;background:var(--blue);color:#fff;font-family:inherit;min-height:48px;transition:opacity .2s,transform .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+        .login-card .login-btn:active{transform:scale(.97)}
+        .login-card .login-btn:disabled{opacity:.5;cursor:not-allowed}
+        .login-card .login-btn:hover:not(:disabled){background:#4f46e5}
+        .login-spinner{display:none;width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:loginSpin .6s linear infinite}
+        @keyframes loginSpin{to{transform:rotate(360deg)}}
+        .login-footer{text-align:center;margin-top:20px;font-size:.7rem;color:#475569}
+        @media(max-width:480px){
+            .login-card{padding:24px 18px;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+            .login-overlay{align-items:flex-end}
+        }
+    @media(max-width:480px){.photo-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}}
         /* PHOTO STRIP IN MAP POPUP */
         .popup-photo-strip{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;min-height:36px;align-items:center}
         .popup-photo-strip .strip-label{font-size:.68rem;color:var(--text2);width:100%}
@@ -301,21 +326,49 @@
 </head>
 <body>
 
-<header class="header">
+<!-- ===== LOGIN OVERLAY ===== -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+        <div class="login-logo">🌳</div>
+        <h1>樹木調查系統</h1>
+        <p class="login-sub">請用員工帳號登入</p>
+        <div class="login-error" id="loginError"></div>
+        <div class="login-field">
+            <label for="loginEmail">📧 電郵地址</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email" inputmode="email">
+        </div>
+        <div class="login-field">
+            <label for="loginPassword">🔒 密碼</label>
+            <input type="password" id="loginPassword" placeholder="請輸入密碼" autocomplete="current-password">
+        </div>
+        <button class="login-btn" id="loginBtn" onclick="handleLogin()">
+            <span class="login-spinner" id="loginSpinner"></span>
+            <span id="loginBtnText">🔐 登入</span>
+        </button>
+        <div class="login-footer">🔒 受 Supabase Auth 保護 • RLS 已啟用</div>
+    </div>
+</div>
+
+<header class="header hidden" id="mainHeader">
     <div class="header-left">
         <span class="header-logo">🌳 樹木調查</span>
         <span class="header-status online" id="connStatus">
             <span class="dot green pulse"></span> <span id="connText">CDN 載入中...</span>
         </span>
     </div>
-    <div class="flex gap-2 items-center flex-wrap">
+    <div class="header-right">
+        <span class="header-user" id="headerUserInfo">
+            <span>👤</span>
+            <span class="user-email" id="headerUserEmail"></span>
+        </span>
         <span style="font-size:.68rem;color:var(--text2)" id="projectUrlDisplay"></span>
-        <button class="btn btn-outline btn-sm" onclick="diagnosis()">🔍</button>
-        <button class="btn btn-outline btn-sm" onclick="refreshAll()">🔄</button>
+        <button class="btn btn-outline btn-xs" onclick="diagnosis()">🔍</button>
+        <button class="btn btn-outline btn-xs" onclick="refreshAll()">🔄</button>
+        <button class="btn btn-outline btn-xs" onclick="handleLogout()" style="color:#f87171;border-color:rgba(239,68,68,.3)">🚪 登出</button>
     </div>
 </header>
 
-<div class="container">
+<div class="container hidden" id="mainContainer">
 
     <div class="warning-box hidden" id="speciesWarning">
         <h4>⚠️ 樹種資料未匯入</h4>
@@ -642,6 +695,8 @@ var _focusInProgress = false;
 var _currentLayer = 'dark';
 var _pickerCurrentLayer = 'dark';
 var _popupPhotoCache = {};
+var isAuthenticated = false;
+var currentUser = null;
 
 // ============================================================
 // UUID FALLBACK (B8: crypto.randomUUID needs HTTPS)
@@ -697,6 +752,157 @@ function recBadge(v) {
     var m = {retain:'retain',fell:'fell',transplant:'transplant',prune:'monitor',monitor:'monitor','further investigation':'investigation'};
     var cls = m[v.toLowerCase()] || '';
     return '<span class="tc-badge '+cls+'">'+esc(v)+'</span>';
+}
+
+// ============================================================
+// AUTH: Show/Hide UI
+// ============================================================
+function showLoginScreen() {
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('mainHeader').classList.add('hidden');
+    document.getElementById('mainContainer').classList.add('hidden');
+    document.getElementById('fabAddTree').classList.add('hidden');
+    isAuthenticated = false;
+    currentUser = null;
+    document.getElementById('headerUserEmail').textContent = '';
+}
+
+function hideLoginScreen() {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('mainHeader').classList.remove('hidden');
+    document.getElementById('mainContainer').classList.remove('hidden');
+    // fab 只有在進入 project-detail 時才顯示
+    isAuthenticated = true;
+}
+
+function onAuthenticated(user) {
+    currentUser = user;
+    document.getElementById('headerUserEmail').textContent = user.email || '';
+    hideLoginScreen();
+    loadSpeciesList();
+    loadProjects();
+    if (!canUseGPS()) {
+        setTimeout(function(){
+            var warn = document.getElementById('gpsProtocolWarn');
+            if (warn) { warn.innerHTML = getProtocolWarningHTML(); warn.classList.remove('hidden'); }
+        }, 2000);
+    }
+    toast('✅ 登入成功 — ' + (user.email || ''), 'success');
+}
+
+function onUnauthenticated() {
+    showLoginScreen();
+    // Clear state
+    _cachedTreeData = [];
+    if (mapObj) { destroyMap(); }
+    currentView = 'projects';
+    currentProjectId = null;
+    currentDetailTab = 'list';
+    projPage = 0;
+    treePage = 0;
+}
+
+// ============================================================
+// AUTH: Login / Logout
+// ============================================================
+async function handleLogin() {
+    if (!supabase) {
+        showLoginError('⚠️ 系統初始化中，請稍候...');
+        return;
+    }
+    var email = document.getElementById('loginEmail').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    if (!email) { showLoginError('請輸入電郵地址'); return; }
+    if (!password) { showLoginError('請輸入密碼'); return; }
+    setLoginLoading(true);
+    hideLoginError();
+    try {
+        var result = await supabase.auth.signInWithPassword({ email: email, password: password });
+        if (result.error) {
+            var msg = result.error.message || '登入失敗';
+            if (msg.indexOf('Invalid login credentials') >= 0 || msg.indexOf('invalid') >= 0) msg = '❌ 電郵或密碼錯誤，請再試';
+            else if (msg.indexOf('Email not confirmed') >= 0) msg = '📧 請先到電郵信箱確認註冊';
+            else msg = '❌ ' + msg;
+            showLoginError(msg);
+            setLoginLoading(false);
+            return;
+        }
+        // onAuthStateChange will call onAuthenticated
+    } catch(e) {
+        showLoginError('❌ 連線失敗：' + (e.message || '請檢查網絡'));
+        setLoginLoading(false);
+    }
+}
+
+async function handleLogout() {
+    if (!supabase) return;
+    try {
+        await supabase.auth.signOut();
+        onUnauthenticated();
+        toast('👋 已登出', 'success');
+    } catch(e) {
+        toast('❌ 登出失敗：' + (e.message || ''), 'error');
+    }
+}
+
+function showLoginError(msg) {
+    var el = document.getElementById('loginError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function hideLoginError() {
+    var el = document.getElementById('loginError');
+    if (el) { el.style.display = 'none'; }
+}
+
+function setLoginLoading(loading) {
+    var btn = document.getElementById('loginBtn');
+    var spinner = document.getElementById('loginSpinner');
+    var btnText = document.getElementById('loginBtnText');
+    if (!btn || !spinner || !btnText) return;
+    if (loading) {
+        btn.disabled = true;
+        spinner.style.display = 'inline-block';
+        btnText.textContent = '登入中...';
+    } else {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = '🔐 登入';
+    }
+}
+
+// ============================================================
+// AUTH: Init listener
+// ============================================================
+function initAuth() {
+    if (!supabase) return;
+    try {
+        supabase.auth.onAuthStateChange(function(event, session) {
+            console.log('🔐 Auth state change:', event, session ? session.user?.email : 'no session');
+            if (session && session.user) {
+                onAuthenticated(session.user);
+            } else {
+                onUnauthenticated();
+            }
+        });
+
+        // Also check initial session
+        supabase.auth.getSession().then(function(result) {
+            if (result.data && result.data.session && result.data.session.user) {
+                console.log('🔐 Existing session found:', result.data.session.user.email);
+                onAuthenticated(result.data.session.user);
+            } else {
+                console.log('🔐 No existing session, showing login');
+                onUnauthenticated();
+            }
+        }).catch(function(e) {
+            console.warn('⚠️ getSession failed:', e.message);
+            onUnauthenticated();
+        });
+    } catch(e) {
+        console.error('Auth init error:', e);
+        onUnauthenticated();
+    }
 }
 
 // ============================================================
@@ -1088,13 +1294,8 @@ function initSupabase() {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'public' } });
         document.getElementById('projectUrlDisplay').textContent = SUPABASE_URL.replace('https://','');
         setStatus(true, '✅ 連線成功'); initDone = true;
-        loadSpeciesList();
-        if (!canUseGPS()) {
-            setTimeout(function(){
-                var warn = document.getElementById('gpsProtocolWarn');
-                if (warn) { warn.innerHTML = getProtocolWarningHTML(); warn.classList.remove('hidden'); }
-            }, 2000);
-        }
+        // Start auth listener instead of directly loading
+        initAuth();
         return true;
     } catch(e) { setStatus(false, 'Init 失敗'); return false; }
 }
@@ -1564,6 +1765,10 @@ document.addEventListener('keydown',function(e){
         }
         if (!document.querySelector('.modal-overlay:not(.hidden)')) pendingDelete = null;
     }
+    // Enter key on login password field triggers login
+    if (e.key === 'Enter' && document.activeElement === document.getElementById('loginPassword')) {
+        handleLogin();
+    }
 });
 
 async function refreshAll() {
@@ -1894,6 +2099,7 @@ async function openPhotoViewerForTree(treeId, startIdx) {
 async function diagnosis() {
     var L=[]; function log(m){L.push(m);console.log('[DIAG]',m);}
     log('═══ v20 診斷 ═══');
+    log('Auth: ' + (isAuthenticated ? '✅ ' + (currentUser?.email || '') : '❌ 未登入'));
     log('SDK: '+(sdkReady()?'✅':'❌')); log('XLSX: '+(xlsxReady()?'✅':'❌')); log('Leaflet: '+(leafletReady()?'✅':'❌'));
     log('Species: Bot '+botanicalNames.length+' | Chi '+chineseNames.length);
     log('Protocol: ' + window.location.protocol + ' | Host: ' + window.location.hostname);
@@ -1927,6 +2133,8 @@ window.addEventListener('resize', function() {
 console.log('🚀 v20 Boot...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true,'CDN 載入中...');
+// Start with login screen visible, main UI hidden
+showLoginScreen();
 var _pollCount=0;
 var _poll=setInterval(function(){
     _pollCount++;
@@ -1934,7 +2142,8 @@ var _poll=setInterval(function(){
         clearInterval(_poll);
         if (window.__SDK_FAILED__) { setStatus(false,'❌ SDK 失敗'); return; }
         console.log('✅ All CDNs ready');
-        initSupabase(); loadProjects();
+        initSupabase();
+        // initSupabase() now calls initAuth() which will show/hide login based on session
         return;
     }
     if (_pollCount>150) { clearInterval(_poll); setStatus(false,'⏰ CDN 超時'); }
