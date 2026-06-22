@@ -1,0 +1,336 @@
+/**
+ * 🌳 樹木調查系統 — Leaflet 地圖模組
+ * @module map
+ * 
+ * 地圖渲染、標記管理、健康狀態濾鏡、搜尋、樹木定位聚焦、
+ * 地圖銷毀及 popup 照片 strip 載入。
+ */
+
+// ============================================================
+// 地圖銷毀
+// ============================================================
+
+/**
+ * 銷毀當前地圖及所有標記（釋放記憶體）
+ */
+function destroyMap() {
+    if (AppState.mapObj) { AppState.mapObj.remove(); AppState.mapObj = null; }
+    AppState.mapMarkers = [];
+    AppState.markerLookup = {};
+    AppState._cachedTreeData = [];
+    AppState._hiddenHealth = {};
+    if (AppState._locateMarker) { AppState._locateMarker = null; }
+    document.querySelectorAll('.filter-toggle').forEach(function(b) {
+        b.classList.add('on');
+        b.classList.remove('off');
+    });
+    var si = document.getElementById('mapSearchInput');
+    if (si) si.value = '';
+    var st = document.getElementById('mapStatus');
+    if (st) st.textContent = '';
+}
+
+// ============================================================
+// 標記顏色
+// ============================================================
+
+/**
+ * 根據健康狀態回傳標記顏色
+ * @param {string|null} health
+ * @returns {string} hex color
+ */
+function getMarkerColor(health) {
+    var h = (health || '').toLowerCase();
+    if (h === 'good') return '#10b981';
+    if (h === 'fair') return '#f59e0b';
+    if (h === 'poor') return '#ef4444';
+    if (h === 'dead') return '#6b7280';
+    return '#94a3b8';
+}
+
+// ============================================================
+// 地圖渲染入口
+// ============================================================
+
+/**
+ * 渲染地圖（從快取或 DB 載入）
+ */
+function renderMap() {
+    if (!leafletReady()) { toast('⚠️ 地圖 library 未載入', 'warning'); return; }
+    if (AppState._cachedTreeData.length > 0) {
+        _doRenderMap(AppState._cachedTreeData);
+    } else {
+        _doRenderMapFromDB();
+    }
+}
+
+/**
+ * 從 DB 載入樹木資料並渲染地圖
+ */
+async function _doRenderMapFromDB() {
+    if (!AppState.supabase || !AppState.currentProjectId) return;
+    try {
+        var allTrees = [];
+        var from = 0;
+        while (true) {
+            var r = await AppState.supabase.from('trees')
+                .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude')
+                .eq('projectId', AppState.currentProjectId)
+                .range(from, from + 999)
+                .order('treeIdNo', { ascending: true });
+            if (r.error) break;
+            if (!r.data || r.data.length === 0) break;
+            allTrees = allTrees.concat(r.data);
+            if (r.data.length < 1000) break;
+            from += 1000;
+        }
+        AppState._cachedTreeData = allTrees;
+        _doRenderMap(allTrees);
+    } catch(e) {
+        toast('❌ Map load error: ' + e.message, 'error');
+        document.getElementById('mapStatus').textContent = '❌ 載入失敗';
+    }
+}
+
+/**
+ * 實際執行地圖渲染
+ * @param {object[]} trees - 樹木資料陣列
+ */
+function _doRenderMap(trees) {
+    var container = document.getElementById('mapContainer');
+    if (!container) return;
+    destroyMap();
+    AppState.mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, 15);
+    var layerCfg = LAYER_CONFIG[AppState._currentLayer] || LAYER_CONFIG['dark'];
+    AppState.mapObj._currentTileLayer = L.tileLayer(layerCfg.url, layerCfg.options).addTo(AppState.mapObj);
+    document.querySelectorAll('#view-project-map .layer-toggle').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.layer === AppState._currentLayer);
+    });
+
+    /** @type {object[]} */
+    var withCoords = trees.filter(function(t) {
+        return t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude));
+    });
+    document.getElementById('sProjectMappedCount').textContent = withCoords.length;
+
+    if (withCoords.length === 0) {
+        AppState.mapObj.setView(HK_CENTER, 14);
+        document.getElementById('mapStatus').textContent = '冇樹有座標';
+        return;
+    }
+
+    var bounds = [];
+    withCoords.forEach(function(t) {
+        var lat = Number(t.latitude), lng = Number(t.longitude);
+        var color = getMarkerColor(t.healthCondition);
+        var icon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',
+            iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
+        });
+        var marker = L.marker([lat, lng], { icon: icon }).addTo(AppState.mapObj);
+        marker._treeId = t.treeIdNo || '';
+        marker._health = t.healthCondition || '';
+        marker._botanicalName = t.botanicalName || '';
+        marker._chineseName = t.chineseName || '';
+        marker._dbId = t.id;
+        marker.bindTooltip((t.treeIdNo || '?'), {
+            permanent: true, direction: 'top', className: 'tree-label', offset: [0, -8]
+        });
+        marker.bindPopup(
+            '<strong>' + esc(t.treeIdNo || '—') + '</strong><br>' +
+            '<i>' + esc(t.botanicalName || '') + '</i> ' + esc(t.chineseName || '') + '<br>' +
+            (t.trunkDiameter ? '📐 DBH: ' + esc(t.trunkDiameter) + 'mm<br>' : '') +
+            (t.overallHeight ? '📏 H: ' + esc(t.overallHeight) + 'm<br>' : '') +
+            (t.crownSpread ? '🌳 Crown: ' + esc(t.crownSpread) + 'm<br>' : '') +
+            '💚 ' + (t.healthCondition || '—') + ' | 🏗️ ' + (t.structuralCondition || '—') + '<br>' +
+            '📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
+            '<div class="popup-photo-strip" data-tree-db-id="' + esc(t.id) + '"><div class="strip-loading">📷 點擊載入照片...</div></div>' +
+            '<div class="pop-actions">' +
+            '<button onclick="editTree(\'' + t.id + '\')">✏️ 編輯</button>' +
+            '<button onclick="confirmDeleteTree(\'' + t.id + '\',\'' + esc(t.treeIdNo || t.id) + '\')" style="color:#f87171;border-color:rgba(239,68,68,.4)">🗑 刪除</button>' +
+            '</div>'
+        );
+        AppState.mapMarkers.push(marker);
+        if (t.id) AppState.markerLookup[t.id] = marker;
+        bounds.push([lat, lng]);
+    });
+
+    // Popup 打開時載入照片 strip
+    AppState.mapObj.on('popupopen', function(e) {
+        var popupEl = e.popup.getElement();
+        if (popupEl) {
+            var strip = popupEl.querySelector('.popup-photo-strip');
+            if (strip) {
+                var treeId = strip.getAttribute('data-tree-db-id');
+                if (treeId && typeof loadPhotosIntoPopup === 'function') {
+                    loadPhotosIntoPopup(treeId, strip);
+                }
+            }
+        }
+    });
+
+    // 處理待定位的樹（來自列表點擊）
+    if (AppState._pendingFocusTreeId) {
+        var focusMarker = AppState.markerLookup[AppState._pendingFocusTreeId];
+        if (focusMarker) {
+            AppState.mapObj.setView(focusMarker.getLatLng(), 18, { animate: false });
+            setTimeout(function() { focusMarker.openPopup(); }, 300);
+            var focusTooltip = focusMarker.getTooltip();
+            if (focusTooltip) {
+                setTimeout(function() {
+                    var fe = focusTooltip.getElement();
+                    if (fe) { fe.classList.add('highlight'); setTimeout(function() { fe.classList.remove('highlight'); }, 2000); }
+                }, 400);
+            }
+            var focusIconEl = focusMarker.getElement();
+            if (focusIconEl) {
+                setTimeout(function() {
+                    focusIconEl.style.transition = 'transform 0.3s ease';
+                    focusIconEl.style.transform = 'translateY(-8px)';
+                    setTimeout(function() { focusIconEl.style.transform = 'translateY(0)'; }, 300);
+                }, 500);
+            }
+            var si = document.getElementById('mapSearchInput');
+            if (si) si.value = focusMarker._treeId || AppState._pendingFocusTreeId;
+            var focusTreeData = AppState._cachedTreeData.find(function(t) { return t.id === AppState._pendingFocusTreeId; });
+            if (focusTreeData && focusTreeData.healthCondition && AppState._hiddenHealth[focusTreeData.healthCondition]) {
+                toggleHealthFilter(focusTreeData.healthCondition, null);
+            }
+            document.getElementById('mapStatus').textContent = '📍 已定位 ' + (focusMarker._treeId || '') + ' | 全部 ' + withCoords.length + ' 棵';
+        } else {
+            if (bounds.length === 1) AppState.mapObj.setView(bounds[0], 17);
+            else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+            document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+        }
+        AppState._pendingFocusTreeId = null;
+        AppState._focusResolved = true;
+    } else {
+        AppState._focusResolved = true;
+        if (bounds.length === 1) AppState.mapObj.setView(bounds[0], 17);
+        else if (bounds.length > 1) AppState.mapObj.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+        document.getElementById('mapStatus').textContent = '全部 ' + withCoords.length + ' 棵';
+    }
+    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, 200);
+    setTimeout(function() { if (AppState.mapObj) AppState.mapObj.invalidateSize(); }, 600);
+}
+
+// ============================================================
+// 列表 → 地圖同步定位
+// ============================================================
+
+/**
+ * 從列表點擊「📍」時，切換到地圖並聚焦指定樹木
+ * @param {string} treeId - 樹的 UUID
+ */
+function focusTreeOnMap(treeId) {
+    AppState.currentDetailTab = 'map';
+    document.getElementById('view-project-list').classList.add('hidden');
+    document.getElementById('view-project-map').classList.remove('hidden');
+    document.getElementById('tabList').classList.remove('active');
+    document.getElementById('tabMap').classList.add('active');
+
+    if (AppState._focusInProgress) { AppState._focusInProgress = false; }
+    AppState._focusInProgress = true;
+    AppState._focusResolved = false;
+    if (AppState.mapObj) { destroyMap(); }
+
+    AppState._pendingFocusTreeId = treeId;
+    setTimeout(function() { renderMap(); }, 100);
+    _focusTreeOnMapNow(treeId, 0);
+}
+
+/**
+ * 輪詢直到地圖渲染完成後聚焦（內部遞迴）
+ * @param {string} treeId
+ * @param {number} retryCount
+ */
+function _focusTreeOnMapNow(treeId, retryCount) {
+    retryCount = retryCount || 0;
+    if (AppState._focusResolved) {
+        AppState._focusInProgress = false;
+        if (!AppState.markerLookup[treeId]) {
+            var tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
+            if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
+            else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
+        } else {
+            applyMapFilters();
+        }
+        return;
+    }
+    if (!AppState.mapObj) {
+        if (retryCount < 80) {
+            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        } else {
+            AppState._focusResolved = true;
+            AppState._focusInProgress = false;
+            toast('⚠️ 地圖初始化逾時', 'warning');
+        }
+        return;
+    }
+    var marker = AppState.markerLookup[treeId];
+    if (!marker) {
+        if (retryCount < 66) {
+            setTimeout(function() { _focusTreeOnMapNow(treeId, retryCount + 1); }, 150);
+        } else {
+            AppState._focusResolved = true;
+            AppState._focusInProgress = false;
+            var tree = AppState._cachedTreeData.find(function(t) { return t.id === treeId; });
+            if (!tree) { toast('⚠️ 地圖上搵唔到呢棵樹', 'warning'); }
+            else { toast('⚠️ 呢棵樹冇座標，地圖上搵唔到', 'warning'); }
+        }
+        return;
+    }
+    AppState._focusResolved = true;
+    AppState._focusInProgress = false;
+    AppState._pendingFocusTreeId = null;
+    applyMapFilters();
+}
+
+// ============================================================
+// 地圖搜尋與健康濾鏡
+// ============================================================
+
+/**
+ * 搜尋：觸發濾鏡更新
+ */
+function searchMapTrees() {
+    applyMapFilters();
+}
+
+/**
+ * 根據搜尋框 + 健康狀態濾鏡更新地圖標記顯示
+ */
+function applyMapFilters() {
+    if (!AppState.mapObj) return;
+    var query = (document.getElementById('mapSearchInput')?.value || '').trim().toLowerCase();
+    var visibleCount = 0;
+    AppState.mapMarkers.forEach(function(m) {
+        var tid = (m._treeId || '').toLowerCase();
+        var bname = (m._botanicalName || '').toLowerCase();
+        var cname = (m._chineseName || '').toLowerCase();
+        var health = m._health || '';
+        var hiddenByHealth = AppState._hiddenHealth[health] || false;
+        var matchesSearch = !query || tid.indexOf(query) >= 0 || bname.indexOf(query) >= 0 || cname.indexOf(query) >= 0;
+        var visible = !hiddenByHealth && matchesSearch;
+        if (visible) { m.addTo(AppState.mapObj); visibleCount++; }
+        else { AppState.mapObj.removeLayer(m); }
+    });
+    document.getElementById('mapStatus').textContent = '顯示 ' + visibleCount + ' / ' + AppState.mapMarkers.length + ' 棵';
+}
+
+/**
+ * 切換健康狀態濾鏡
+ * @param {string} health - 健康狀態 ('Good'|'Fair'|'Poor'|'Dead')
+ * @param {HTMLElement|null} btnEl - 觸發的按鈕元素
+ */
+function toggleHealthFilter(health, btnEl) {
+    if (AppState._hiddenHealth[health]) {
+        delete AppState._hiddenHealth[health];
+        if (btnEl) { btnEl.classList.add('on'); btnEl.classList.remove('off'); }
+    } else {
+        AppState._hiddenHealth[health] = true;
+        if (btnEl) { btnEl.classList.add('off'); btnEl.classList.remove('on'); }
+    }
+    applyMapFilters();
+}
