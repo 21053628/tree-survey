@@ -22,34 +22,13 @@ function loadSpeciesList() {
             buildSpeciesLists(r.data.map(function(x){ return {bot: x.botanical_name, chi: x.chinese_name}; }));
             return;
         }
-        if (!r.error) {
-            AppState.botanicalNames = [];
-            AppState.chineseNames = [];
-            AppState.speciesMap = {};
-            AppState.speciesLoaded = false;
-            document.getElementById('speciesWarning').classList.remove('hidden');
-            initSuggestDropdowns();
-            return;
-        }
-        // Fallback: 舊版 species 欄位
-        supabase.from('species_list').select('species').order('species', { ascending: true }).then(function(r2) {
-            if (r2.error || !r2.data || r2.data.length === 0) {
-                AppState.botanicalNames = [];
-                AppState.chineseNames = [];
-                AppState.speciesLoaded = false;
-                document.getElementById('speciesWarning').classList.remove('hidden');
-                initSuggestDropdowns();
-                return;
-            }
-            const parsed = [];
-            r2.data.forEach(function(row) {
-                const s = row.species || '';
-                const match = s.match(/^([A-Za-z][A-Za-z .''\-]*(?:\([^)]*\))?)\s+(.+)$/);
-                if (match) { parsed.push({ bot: match[1].trim(), chi: match[2].trim() }); }
-                else { parsed.push({ bot: s, chi: '' }); }
-            });
-            buildSpeciesLists(parsed);
-        });
+        // Empty data: show warning
+        AppState.botanicalNames = [];
+        AppState.chineseNames = [];
+        AppState.speciesMap = {};
+        AppState.speciesLoaded = false;
+        document.getElementById('speciesWarning').classList.remove('hidden');
+        initSuggestDropdowns();
     });
 }
 

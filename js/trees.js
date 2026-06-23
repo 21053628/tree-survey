@@ -403,7 +403,6 @@ function editTree(id) {
         document.getElementById('tree_remarks').value = d.remarks || '';
         document.getElementById('tree_latitude').value = (d.latitude != null) ? d.latitude : '';
         document.getElementById('tree_longitude').value = (d.longitude != null) ? d.longitude : '';
-        document.getElementById('tree_editUpdatedAt').value = d.updatedAt || '';
         document.getElementById('treeModalTitle').textContent = '✏️ 編輯樹木';
         const accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
         _setupGPSWarning();

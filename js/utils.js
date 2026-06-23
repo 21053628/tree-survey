@@ -19,16 +19,6 @@ function uuid() {
 }
 
 /**
- * HTML 跳脫（防 XSS）
- * @param {*} s - 輸入值
- * @returns {string} 跳脫後的字串
- */
-function esc(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'&#39;');
-}
-
-/**
  * 取得今日日期字串 YYYY-MM-DD
  * @returns {string}
  */
@@ -250,7 +240,6 @@ async function fetchAllPages(queryBuilder, pageSize) {
 // ============================================================
 TreeApp.utils = {
     uuid: uuid,
-    esc: esc,
     todayStr: todayStr,
     isMobile: isMobile,
     canUseGPS: canUseGPS,
