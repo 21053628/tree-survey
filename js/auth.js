@@ -18,6 +18,7 @@ function showLoginScreen() {
     document.getElementById('mainHeader').classList.add('hidden');
     document.getElementById('mainContainer').classList.add('hidden');
     document.getElementById('fabAddTree').classList.add('hidden');
+    document.getElementById('mainFooter').classList.add('hidden');
     AppState.isAuthenticated = false;
     AppState.currentUser = null;
     document.getElementById('headerUserEmail').textContent = '';
@@ -30,6 +31,7 @@ function hideLoginScreen() {
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('mainHeader').classList.remove('hidden');
     document.getElementById('mainContainer').classList.remove('hidden');
+    document.getElementById('mainFooter').classList.remove('hidden');
     // fab 只有在進入 project-detail 時才顯示
     AppState.isAuthenticated = true;
 }

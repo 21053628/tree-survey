@@ -40,6 +40,8 @@
             <span class="login-spinner" id="loginSpinner"></span>
             <span id="loginBtnText">🔐 登入</span>
         </button>
+        <div class="login-owner">系統擁有者：<strong>Terry Cheung (60524440)</strong></div>
+        <div class="login-disclaimer">⚠️ 此系統僅供授權人員使用。未經授權之存取將被追究法律責任。</div>
         <div class="login-footer">🔒 受 Supabase Auth 保護 • RLS 已啟用</div>
     </div>
 </div>
@@ -56,7 +58,9 @@
             <span>👤</span>
             <span class="user-email" id="headerUserEmail"></span>
         </span>
+        <span class="owner-badge">👤 Terry Cheung (60524440)</span>
         <span style="font-size:.68rem;color:var(--text2)" id="projectUrlDisplay"></span>
+        <button class="btn btn-outline btn-xs" data-action="show-changelog">📋 版本紀錄</button>
         <button class="btn btn-outline btn-xs" data-action="diagnosis">🔍</button>
         <button class="btn btn-outline btn-xs" data-action="refresh">🔄</button>
         <button class="btn btn-outline btn-xs" data-action="logout" style="color:#f87171;border-color:rgba(239,68,68,.3)">🚪 登出</button>
@@ -159,6 +163,12 @@
         </div>
     </div>
 </div>
+
+<footer class="footer-bar hidden" id="mainFooter">
+    <span class="footer-owner">© 2025 Terry Cheung (60524440) — 樹木調查系統</span>
+    <span class="footer-disclaimer">⚠️ 免責聲明：此系統僅供授權人員使用。所有資料屬機密資訊，未經授權不得複製、分發或披露。系統內資料僅供參考，不構成任何法律或專業建議。</span>
+    <span class="footer-version">v21</span>
+</footer>
 
 <button class="fab hidden" id="fabAddTree" data-action="create-tree" title="新增樹木">➕</button>
 
@@ -348,6 +358,762 @@
         <div style="font-size:3rem;margin-bottom:8px">⚠️</div><h3>確認刪除？</h3>
         <p style="color:var(--text2);font-size:.85rem;margin-top:8px" id="confirmMsg"></p>
         <div class="modal-actions" style="justify-content:center"><button class="btn btn-outline" data-action="close-modal" data-modal="confirmModal">取消</button><button class="btn btn-danger" id="confirmBtn">確認刪除</button></div>
+    </div>
+</div>
+
+<!-- ===== CHANGELOG MODAL ===== -->
+<div class="modal-overlay hidden" id="changelogModal">
+    <div class="modal changelog-modal">
+        <div class="changelog-header-bar">
+            <h3>📋 版本開發紀錄</h3>
+            <button class="btn btn-outline btn-sm" data-action="close-modal" data-modal="changelogModal">✕ 關閉</button>
+        </div>
+        <div class="changelog-body">
+            <p class="changelog-intro">本文件記錄「🌳 樹木調查與智慧管理系統」自 2020 年起的所有顯著變更。格式參考 <a href="https://keepachangelog.com/zh-TW/1.0.0/" target="_blank" rel="noopener">Keep a Changelog</a>。</p>
+            <div class="changelog-divider"></div>
+
+            <!-- v21.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v21.0</span>
+                    <span class="changelog-ver-date">2026-06-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>全面 CSP (Content Security Policy) 強化，阻止 XSS 攻擊向量</li><li>登入頁面加入免責聲明及系統擁有者資訊</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>升級 Leaflet 至 v1.9.4</li><li>優化移動端觸控體驗</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-security">Security</span><ul><li>強化 connect-src 白名單，僅允許 Supabase 域名</li><li>加入 worker-src blob: 限制</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v20.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v20.0</span>
+                    <span class="changelog-ver-date">2026-05-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>GPS 定位加入 IP 地理位置最終降級機制（ipapi.co）</li><li>地圖揀位 Modal 支援圖層切換（Dark / 衛星 / 地形 / 街道）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>將所有 CDN 資源固定版本號，防止供應鏈攻擊</li><li>重構 gps.js 模組，分離權限處理與定位邏輯</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復 iOS Safari 上 <input type="date"> 預設值格式不一致問題</li><li>修復斷網狀態下重複 Toast 彈出問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v19.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v19.0</span>
+                    <span class="changelog-ver-date">2026-04-12</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>地圖上樹木 Marker 支援按 Health Condition 分色顯示（Good/Fair/Poor/Dead）</li><li>地圖搜尋欄：可按 Tree ID 或名稱快速定位</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>地圖圖例（Legend）重新設計，置於地圖底部</li><li>拍照 Button 加入 capture="environment" 屬性，強制開啟後鏡頭</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復多次來回切換專案列表時 Memory Leak 問題</li><li>修復地圖 Marker Popup 在移動端無法關閉</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v18.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v18.0</span>
+                    <span class="changelog-ver-date">2026-03-08</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木卡片視圖（Card View）：手機版自動切換，顯示縮圖與主要資訊</li><li>專案卡片視圖：手機版以卡片滑動瀏覽所有專案</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>統計卡片（Stats Grid）加入動畫過渡效果</li><li>優化 ui.js 的 RWD 斷點偵測方式（改用 matchMedia）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復 Android Chrome 上 GPS 定位逾時無回調問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v17.1 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v17.1</span>
+                    <span class="changelog-ver-date">2026-02-18</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復 HEIC 轉換在某些 iOS 16 裝置上失敗的邊緣案例</li><li>修復 Excel 匯出時 DBH 欄位格式為文字而非數字的問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v17.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v17.0</span>
+                    <span class="changelog-ver-date">2026-02-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>照片標註工具箱（Annotation Toolbar）：支援畫紅圈、畫線、撤銷、清除、儲存標記</li><li>照片檢視器支援前後張導航（◀ 上一張 / 下一張 ▶）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>照片檢視 Modal 尺寸擴大至 90vw</li><li><canvas> 標註層覆蓋於照片之上，支援縮放同步</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v16.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v16.0</span>
+                    <span class="changelog-ver-date">2026-01-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>tree_photos 資料表加入 caption（說明）與 photo_date（拍攝日期）欄位</li><li>照片說明編輯 Modal</li><li>照片下載功能</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>照片網格（Photo Grid）樣式改為 3 欄等寬佈局</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復儲存樹木時未一併儲存照片說明的問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v15.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v15.0</span>
+                    <span class="changelog-ver-date">2025-12-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>全系統專案大總結匯出（Export All Projects to Excel）</li><li>單一專案樹木清單匯出（Export Project to Excel）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>Excel 匯出改用 xlsx 庫在前端直接生成，無需後端參與</li><li>匯出按鈕加入 loading spinner</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復匯出資料時中文欄位名稱亂碼問題（加入 BOM）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v14.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v14.0</span>
+                    <span class="changelog-ver-date">2025-11-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>照片雙軌壓縮機制：上傳時自動生成 1920px 大圖 + 300px 縮圖</li><li>HEIC/HEIF 前端自動轉換為標準 JPEG</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>照片上傳流程改為先壓縮後上傳，節省頻寬約 60%</li><li>整合 exifr 庫讀取 EXIF 資訊</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v13.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v13.0</span>
+                    <span class="changelog-ver-date">2025-10-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>地圖圖層切換功能：Dark / 衛星 / 地形 / 街道四種圖層</li><li>地圖定位自身按鈕（📍 我）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>地圖初始化中心點改為香港座標（22.3964, 114.1095）</li><li>Leaflet TileLayer URL 改用多個圖源供應商</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v12.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v12.0</span>
+                    <span class="changelog-ver-date">2025-09-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-security">Security</span><ul><li>全面實施 Row Level Security (RLS) 於 projects、trees、tree_photos 三表</li><li>多租戶數據隔離：每筆資料自動綁定 auth.uid()</li><li>Storage Bucket tree-photos 加入 RLS Objects Policies</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>Supabase Client 初始化改用 @supabase/supabase-js v2.x</li><li>移除所有前端硬編碼的測試帳號</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v11.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v11.0</span>
+                    <span class="changelog-ver-date">2025-08-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>物種建議下拉選單（Botanical Name + Chinese Name 雙欄聯動）</li><li>建議選單支援鍵盤上下選擇與 Enter 確認</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>樹木表單重新編排為兩欄 Grid 佈局</li><li>species_list 查詢加入本地快取（Map），減少重複 API 請求</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v10.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v10.0</span>
+                    <span class="changelog-ver-date">2025-07-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>Supabase Auth 登入系統（Email + Password）</li><li>登入遮罩層（Login Overlay）：未登入前強制鎖定所有功能</li><li>登出按鈕</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-security">Security</span><ul><li>關閉 Supabase 自主註冊（Allow new users to sign up = Disabled）</li><li>Anon Key 不再暴露於前端可存取範圍以外</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v9.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v9.5</span>
+                    <span class="changelog-ver-date">2025-06-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>GPS 高精度定位模式（enableHighAccuracy: true）</li><li>GPS 權限被拒後的引導對話框（iOS / Android 分別指引）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>GPS 定位逾時由 10s 延長至 20s</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v9.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v9.0</span>
+                    <span class="changelog-ver-date">2025-05-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>互動式地圖揀位功能（Map Picker Modal）</li><li>地圖上 Click 放標記，一鍵導入經緯度</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>GPS 群組重新設計，整合「Capture GPS」與「地圖揀位」雙按鈕</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v8.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v8.0</span>
+                    <span class="changelog-ver-date">2025-04-02</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>照片上傳功能：支援多張照片同時上傳至 Supabase Storage</li><li>照片網格預覽（Photo Grid）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>樹木表單新增照片區塊（Photo Section）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v7.1 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v7.1</span>
+                    <span class="changelog-ver-date">2025-03-18</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復專案刪除時未一併刪除關聯樹木的問題（CASCADE）</li><li>修復樹木計數在刪除後未即時更新</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v7.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v7.0</span>
+                    <span class="changelog-ver-date">2025-03-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木搜尋功能（Search by Tree ID / Name）</li><li>專案搜尋功能（Search by Project Name）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>搜尋欄加入即時過濾（Debounce 300ms）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v6.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v6.0</span>
+                    <span class="changelog-ver-date">2025-02-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案內地圖視圖（Map View Tab）</li><li>專案內列表視圖（List View Tab）</li><li>Tab 切換 UI 元件</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>樹木列表由純表格改為 Table + Map 雙視圖</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.10 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.10</span>
+                    <span class="changelog-ver-date">2025-01-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木表單新增完整欄位：Crown Spread、Amenity Value、Observed Defects</li><li>Recommendation 下拉選單加入「Further Investigation」選項</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>表單驗證邏輯重構，改用 HTML5 Constraint Validation API</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.9 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.9</span>
+                    <span class="changelog-ver-date">2024-12-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>確認刪除對話框（Confirm Modal），防止誤刪</li><li>Toast 通知系統</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>刪除操作由直接執行改為兩步驟確認</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.8 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.8</span>
+                    <span class="changelog-ver-date">2024-11-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>species_list 資料表導入約 862 條香港常見樹種</li><li>Botanical Name / Chinese Name 雙向查詢</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.7 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.7</span>
+                    <span class="changelog-ver-date">2024-10-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案備註欄位（Notes）</li><li>專案編輯功能</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>專案 Modal 加入日期選擇器</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.6 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.6</span>
+                    <span class="changelog-ver-date">2024-09-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>連接狀態指示器（Connection Status Indicator）</li><li>Supabase Realtime 訂閱（初步測試）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>Header 重新設計，加入用戶資訊與登出按鈕</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.5</span>
+                    <span class="changelog-ver-date">2024-08-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>分頁功能（Pagination）用於專案列表與樹木列表</li><li>每頁顯示 10 筆，支援頁數導航</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v5.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v5.0</span>
+                    <span class="changelog-ver-date">2024-07-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>統計儀表板：專案總數、樹木總數即時顯示</li><li>專案內統計：樹木數、有 GPS 座標數</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>首頁重新設計為 Dashboard 佈局</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v4.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v4.5</span>
+                    <span class="changelog-ver-date">2024-06-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木 GPS 座標欄位（Latitude / Longitude）</li><li>手動輸入經緯度</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>資料庫 trees 表新增 latitude、longitude 欄位</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v4.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v4.0</span>
+                    <span class="changelog-ver-date">2024-05-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>Leaflet 地圖整合</li><li>地圖上顯示所有樹木 Marker</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>前端架構模組化：分離 map.js、photos.js、excel.js</li><li>CDN 引入 Leaflet CSS/JS</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v3.8 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v3.8</span>
+                    <span class="changelog-ver-date">2024-04-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木表單基本欄位：Tree ID、Botanical Name、Chinese Name、DBH、Height、Health、Structural、Recommendation</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>表單由純文字輸入改為結構化 Grid 佈局</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v3.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v3.5</span>
+                    <span class="changelog-ver-date">2024-03-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案 CRUD（Create / Read / Update / Delete）完整實作</li><li>專案內樹木列表關聯顯示</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v3.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v3.0</span>
+                    <span class="changelog-ver-date">2024-02-14</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li><strong>重大架構變更：由 Firebase 遷移至 Supabase</strong></li><li>資料庫由 Firestore (NoSQL) 改為 PostgreSQL (RDBMS)</li><li>認證由 Firebase Auth 改為 Supabase Auth</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>supabase-client.js 模組：封裝 Supabase JS Client</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.6 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.6</span>
+                    <span class="changelog-ver-date">2024-01-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>Firebase Firestore 安全性規則強化</li><li>前端 UI 改用 CSS Variables 統一主題色</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復移動端表格橫向捲動問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.5</span>
+                    <span class="changelog-ver-date">2023-12-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>用戶認證（Firebase Auth Email/Password）</li><li>登入/登出流程</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>重構 main.js，引入 Module Pattern</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.4 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.4</span>
+                    <span class="changelog-ver-date">2023-11-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案日期欄位</li><li>簡單的資料驗證（必填欄位檢查）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.3 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.3</span>
+                    <span class="changelog-ver-date">2023-10-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>基本樹木資料 CRUD（Firebase Firestore）</li><li>專案與樹木的一對多關聯</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.2 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.2</span>
+                    <span class="changelog-ver-date">2023-09-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案（Project）概念引入：樹木歸屬於專案</li><li>專案列表頁面</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.1 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.1</span>
+                    <span class="changelog-ver-date">2023-08-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>遷移至 Firebase Firestore 作為後端資料庫</li><li>移除靜態 JSON 數據檔案</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v2.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v2.0</span>
+                    <span class="changelog-ver-date">2023-07-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>初次整合 Firebase SDK（Firestore + Auth）</li><li>基本讀取測試</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- ===== ERA DIVIDER: Firebase Era → Concept & Prototype Era ===== -->
+            <div class="changelog-era-divider">
+                <span class="changelog-era-label">🔥 Firebase 時代（2022–2024）</span>
+            </div>
+
+            <!-- v1.12 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.12</span>
+                    <span class="changelog-ver-date">2023-06-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>基本搜尋過濾（純前端 Array.filter）</li><li>簡易統計數字顯示</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>改進 CSS 響應式設計，初步支援平板</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.11 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.11</span>
+                    <span class="changelog-ver-date">2023-05-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>表格排序功能（按 Tree ID / DBH）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>表格 UI 改用原生 <table> 取代 <div> 模擬</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.10 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.10</span>
+                    <span class="changelog-ver-date">2023-04-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>編輯樹木資訊功能</li><li>刪除樹木功能（含 confirm() 提示）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.9 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.9</span>
+                    <span class="changelog-ver-date">2023-03-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>新增樹木表單（Modal 彈窗）</li><li>表單包含 Tree ID、Botanical Name、DBH 等基本欄位</li><li>基本表單驗證</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.8 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.8</span>
+                    <span class="changelog-ver-date">2023-02-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木列表展示（從靜態 JSON 讀取）</li><li>基本 CSS 樣式（行動裝置優先 RWD）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>更換字型為系統原生字型堆疊</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.7 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.7</span>
+                    <span class="changelog-ver-date">2023-01-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案資料夾結構建立（css/、js/、data/）</li><li>index.html 基礎骨架與導覽列</li><li>靜態測試資料（data/sample_trees.json，約 20 條記錄）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.6 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.6</span>
+                    <span class="changelog-ver-date">2022-12-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>樹木資料模型初稿（Tree ID、Species、DBH、Height、Health）</li><li>紙本表格數碼化概念驗證</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>決定採用純前端 Jamstack 架構</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.5 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.5</span>
+                    <span class="changelog-ver-date">2022-11-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>第一次客戶現場實測（香港某建築地盤）</li><li>收集前線調查員使用回饋</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復多個 UI 可用性問題（按鈕過小、字體難以閱讀）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.4 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.4</span>
+                    <span class="changelog-ver-date">2022-10-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>Leaflet 地圖初步實驗（僅顯示一個靜態 Marker）</li><li>map.js 原型</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.3 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.3</span>
+                    <span class="changelog-ver-date">2022-09-05</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>研究 Supabase 作為潛在後端替代方案</li><li>撰寫技術評估文件（docs/tech_evaluation.md）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.2 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.2</span>
+                    <span class="changelog-ver-date">2022-08-01</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>Firebase Firestore 連接測試</li><li>基本 CRUD 原型（純 console 操作）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>決定使用 Firebase 作為 MVP 後端</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.1 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.1</span>
+                    <span class="changelog-ver-date">2022-07-15</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>後端方案調研：Firebase vs Supabase vs 自建 API</li><li>技術棧評估筆記</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v1.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v1.0</span>
+                    <span class="changelog-ver-date">2022-06-20</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li><strong>首個可演示的 MVP 版本</strong></li><li>純靜態 HTML + CSS + Vanilla JS</li><li>單頁樹木列表（硬編碼資料）</li><li>基本表格樣式</li><li>專案 README 文件</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- ===== ERA DIVIDER: Prototype Era → Concept Era ===== -->
+            <div class="changelog-era-divider">
+                <span class="changelog-era-label">🧪 概念驗證 & 原型階段（2020–2022）</span>
+            </div>
+
+            <!-- v0.12 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v0.12</span>
+                    <span class="changelog-ver-date">2022-05-10</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>引入 CSS Flexbox 佈局</li><li>基本表單元件樣式庫</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>重構所有 CSS，改用一致的 class 命名規則</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- v0.11 to v0.1 row -->
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.11</span><span class="changelog-ver-date">2022-04-05</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>多頁面導航邏輯（純前端 hash routing）</li><li>頁面切換動畫</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.10</span><span class="changelog-ver-date">2022-03-15</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>行動裝置適配測試（iPhone SE / iPad / Android）</li><li>viewport meta 標籤優化</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-fixed">Fixed</span><ul><li>修復 iOS Safari 上 100vh 滾動問題</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.9</span><span class="changelog-ver-date">2022-02-20</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>表單驗證邏輯（純 JS）</li><li>錯誤訊息顯示元件</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.8</span><span class="changelog-ver-date">2022-01-10</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>「樹木詳情」頁面原型</li><li>麵包屑導航元件</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.7</span><span class="changelog-ver-date">2021-12-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>內聯 SVG 圖標系統</li><li>UI 元件庫初版（按鈕、卡片、Modal 框架）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.6</span><span class="changelog-ver-date">2021-11-05</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>鍵盤快捷鍵支援（初步）</li><li>accesskey 屬性加入主要按鈕</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.5</span><span class="changelog-ver-date">2021-10-10</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>暗色模式 CSS 變數實驗</li><li>基本無障礙（a11y）審查</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.4</span><span class="changelog-ver-date">2021-09-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>LocalStorage 資料持久化實驗</li><li>離線模式概念驗證</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.3</span><span class="changelog-ver-date">2021-08-15</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>靜態 JSON 資料架構設計</li><li>樹木資料結構 Schema 初稿</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.2</span><span class="changelog-ver-date">2021-07-20</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>utils.js 工具函式庫</li><li>DOM 操作輔助函式</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>JavaScript 程式碼由內聯 <script> 遷移至外部 .js 檔案</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.1</span><span class="changelog-ver-date">2021-06-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案初始化</li><li>單一 index.html 檔案，內含嵌入式 CSS 與 JS</li><li>手繪 Wireframe 掃描檔（docs/wireframes/）</li><li>需求訪談記錄（與 Terry Cheung 初次會議）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <!-- ===== ERA DIVIDER: Concept Era → Pre-project Research ===== -->
+            <div class="changelog-era-divider">
+                <span class="changelog-era-label">💡 概念發想 & 調研階段（2020–2021）</span>
+            </div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.12</span><span class="changelog-ver-date">2021-05-03</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>技術可行性評估報告（docs/feasibility_report.pdf）</li><li>初步系統架構圖（手繪）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>確認技術棧：HTML + CSS + Vanilla JS，不採用前端框架</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.11</span><span class="changelog-ver-date">2021-04-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>競爭產品分析（市場上現有樹木管理軟件比較）</li><li>功能需求清單 v1.0</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>由「原生 App」方案轉向「PWA 網頁 App」方案</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.10</span><span class="changelog-ver-date">2021-03-08</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>第一次利害關係人簡報會議</li><li>初步功能 Scope 文檔</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>縮減 MVP 範圍至核心功能：樹木 CRUD + 基本列表</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.9</span><span class="changelog-ver-date">2021-02-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>調查員工作流程訪談（3 位前線樹木調查員）</li><li>紙本調查表格樣本收集（共 5 款不同格式）</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>根據訪談結果修訂 UI 概念設計</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.8</span><span class="changelog-ver-date">2021-01-04</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>項目啟動會議紀要</li><li>初步項目時程表（預計 18 個月內交付 MVP）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.7</span><span class="changelog-ver-date">2020-12-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>技術調研：GPS 定位網頁 API 可行性測試</li><li>簡單的 navigator.geolocation 原型</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>確認目標平台：以流動裝置（手機/平板）為主力</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.6</span><span class="changelog-ver-date">2020-11-02</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>數據庫方案初步比較（Firebase vs Supabase vs MongoDB Atlas）</li><li>成本估算試算表</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.5</span><span class="changelog-ver-date">2020-10-05</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>地圖整合技術調研（Google Maps vs Leaflet vs Mapbox）</li><li>初步選擇 Leaflet（開源、輕量）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.4</span><span class="changelog-ver-date">2020-09-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>用戶故事（User Stories）撰寫（共 12 條）</li><li>角色定義：系統管理員、調查員、審查員</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.3</span><span class="changelog-ver-date">2020-08-03</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>與 Terry Cheung 初步概念討論</li><li>專案代號定為「TreeProject」</li></ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul><li>由「園藝管理系統」更聚焦為「樹木調查系統」</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.2</span><span class="changelog-ver-date">2020-07-06</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>香港樹木保育法規研究筆記</li><li>業界標準參考（ISA 樹木風險評估表格）</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.1</span><span class="changelog-ver-date">2020-06-01</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>概念發想：建築地盤樹木數碼化管理的需求</li><li>初步市場調查（香港建築業樹木調查流程）</li><li>第一次非正式團隊討論</li></ul></div>
+            </div>
+            <div class="changelog-divider"></div>
+
+            <div class="changelog-version">
+                <div class="changelog-version-header"><span class="changelog-ver-tag">v0.0.0</span><span class="changelog-ver-date">2020-01-15</span></div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul><li>專案概念萌芽</li><li>Terry Cheung 提出初步構想：將紙本樹木調查流程數碼化</li><li>初始想法筆記（手寫）</li></ul></div>
+            </div>
+
+            <!-- FOOTER NOTES -->
+            <div class="changelog-divider"></div>
+            <div class="changelog-notes">
+                <p>📝 <strong>備註</strong></p>
+                <ul>
+                    <li><strong>v0.0.0 至 v0.0.12</strong>（2020–2021）為概念發想與調研階段。</li>
+                    <li><strong>v0.1 至 v0.12</strong>（2021–2022）為概念驗證與原型階段，使用純靜態 HTML/CSS/JS。</li>
+                    <li><strong>v1.0 至 v2.6</strong>（2022–2024）為 Firebase 時代，逐步建立完整功能。</li>
+                    <li><strong>v3.0</strong>（2024-02）起全面遷移至 Supabase，奠定企業級安全架構基礎。</li>
+                    <li>目前最新穩定版為 <strong>v21.0</strong>（2026-06-15）。</li>
+                    <li>本系統由 <strong>Terry Cheung (60524440)</strong> 主導開發。</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 

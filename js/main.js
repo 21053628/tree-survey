@@ -167,6 +167,7 @@ document.addEventListener('click', function(e) {
 
             // --- Header ---
             case 'diagnosis': diagnosis(); break;
+            case 'show-changelog': showModal('changelogModal'); break;
             case 'refresh': refreshAll(); break;
 
             // --- Navigation ---
