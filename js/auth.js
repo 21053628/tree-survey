@@ -158,11 +158,11 @@ async function handleLogin() {
             _loginLock = false;
             return;
         }
-        // 登入成功：恢復按鈕 + 主動切換畫面（不單靠 onAuthStateChange）
+        // 登入成功：恢復按鈕（畫面切換交由 onAuthStateChange 監聽器處理，避免重複 toast）
         console.log('🔐 Login success:', result.data.user.email);
         setLoginLoading(false);
         _loginLock = false;
-        onAuthenticated(result.data.user);
+        // onAuthenticated() 由 initAuth() 的 onAuthStateChange 監聽器自動呼叫，毋須手動觸發
     } catch(e) {
         console.error('🔐 Login exception:', e);
         var errMsg = e.message || '';

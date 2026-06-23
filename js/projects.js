@@ -125,6 +125,7 @@ function renderProjectsList(data, treeCounts, totalCount) {
     data.forEach(function(d) {
         const c = treeCounts[d.id] !== undefined ? treeCounts[d.id] : '...';
         const tr = document.createElement('tr');
+        tr.className = 'table-row';
 
         // Col 1: Name (clickable)
         const td1 = document.createElement('td');

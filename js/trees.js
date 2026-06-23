@@ -142,6 +142,7 @@ function _renderTreeTable(data) {
     const fragment = document.createDocumentFragment();
     data.forEach(function(d) {
         const tr = document.createElement('tr');
+        tr.className = 'table-row';
 
         // Col: Tree ID（含 spoofed 紅旗警告）
         const tdId = document.createElement('td');

@@ -26,10 +26,10 @@ const HK_CENTER = [22.35, 114.15];
  * @type {Object<string, {name: string, url: string, options: Object}>}
  */
 const LAYER_CONFIG = {
-    dark:   { name: '🌙 Dark',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',              options: { attribution: '&copy; <a href="https://carto.com/">CARTO</a>', maxZoom: 19 } },
-    imagery:{ name: '🛰️ 衛星',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', options: { attribution: '&copy; Esri, Maxar, Earthstar Geographics', maxZoom: 19 } },
-    topo:   { name: '🗺️ 地形',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',  options: { attribution: '&copy; Esri', maxZoom: 19 } },
-    street: { name: '🏙️ 街道',   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                          options: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>', maxZoom: 19 } }
+    dark:   { name: 'Dark',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',              options: { attribution: '&copy; <a href="https://carto.com/">CARTO</a>', maxZoom: 19 } },
+    imagery:{ name: '衛星',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', options: { attribution: '&copy; Esri, Maxar, Earthstar Geographics', maxZoom: 19 } },
+    topo:   { name: '地形',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',  options: { attribution: '&copy; Esri', maxZoom: 19 } },
+    street: { name: '街道',   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                          options: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>', maxZoom: 19 } }
 };
 
 /**
