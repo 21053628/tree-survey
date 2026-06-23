@@ -43,11 +43,19 @@ function hideLoginScreen() {
  * @param {object} user - Supabase user 物件
  */
 function onAuthenticated(user) {
+    if (!user || !user.email) {
+        console.error('🔐 onAuthenticated called with invalid user:', user);
+        showLoginError('❌ 登入失敗：無法獲取用戶資訊，請再試一次');
+        return;
+    }
     AppState.currentUser = user;
     document.getElementById('headerUserEmail').textContent = user.email || '';
     hideLoginScreen();
     if (typeof loadSpeciesList === 'function') loadSpeciesList();
-    if (typeof loadProjects === 'function') loadProjects();
+    if (typeof loadProjects === 'function') loadProjects().catch(function(e) {
+        // debounce 會 reject 前一個 pending promise，呢個係正常行為，唔使報錯
+        if (e && e.message !== 'debounced') console.warn('loadProjects error:', e.message);
+    });
     if (!canUseGPS()) {
         setTimeout(function(){
             var warn = document.getElementById('gpsProtocolWarn');
@@ -82,42 +90,89 @@ function onUnauthenticated() {
 // 登入 / 登出
 // ============================================================
 
+var _loginLock = false;
+
 /**
  * 處理登入表單提交
  */
 async function handleLogin() {
-    const supabase = AppState.supabase;
-    if (!supabase) {
-        showLoginError('⚠️ 系統初始化中，請稍候...');
+    console.log('🔐 handleLogin() called');
+    if (_loginLock) {
+        console.log('🔐 Login already in progress, ignoring duplicate click');
         return;
+    }
+    var supabase = AppState.supabase;
+    if (!supabase) {
+        console.error('🔐 AppState.supabase is null — Supabase client not initialized');
+        console.log('🔐 Attempting re-initialization of Supabase...');
+        // 嘗試重新初始化
+        if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+            try {
+                AppState.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'public' } });
+                supabase = AppState.supabase;
+                console.log('🔐 Supabase re-initialized successfully');
+                // 重新初始化 auth 監聽
+                if (typeof initAuth === 'function') initAuth();
+            } catch(e) {
+                console.error('🔐 Supabase re-init failed:', e);
+                showLoginError('❌ 無法連接 Supabase：' + (e.message || 'SDK 未載入'));
+                return;
+            }
+        } else {
+            showLoginError('⚠️ Supabase SDK 尚未載入，請檢查網絡連線後重新整理頁面');
+            return;
+        }
+        if (!supabase) {
+            showLoginError('⚠️ 系統初始化失敗，請重新整理頁面');
+            return;
+        }
     }
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     if (!email) { showLoginError('請輸入電郵地址'); return; }
     if (!password) { showLoginError('請輸入密碼'); return; }
+    _loginLock = true;
     setLoginLoading(true);
     hideLoginError();
     try {
         console.log('🔐 Attempting login for:', email);
-        const result = await supabase.auth.signInWithPassword({ email: email, password: password });
+        var result = await supabase.auth.signInWithPassword({ email: email, password: password });
+        console.log('🔐 Login API response:', { hasError: !!result.error, hasData: !!result.data, hasUser: !!(result.data && result.data.user) });
         if (result.error) {
-            let msg = result.error.message || '登入失敗';
+            var msg = result.error.message || '登入失敗';
             console.error('🔐 Login API error:', result.error);
             if (msg.indexOf('Invalid login credentials') >= 0 || msg.indexOf('invalid') >= 0) msg = '❌ 電郵或密碼錯誤，請再試';
             else if (msg.indexOf('Email not confirmed') >= 0) msg = '📧 請先到電郵信箱確認註冊';
             else msg = '❌ ' + msg;
             showLoginError(msg);
             setLoginLoading(false);
+            _loginLock = false;
+            return;
+        }
+        if (!result.data || !result.data.user) {
+            console.error('🔐 Login returned no user data:', result);
+            showLoginError('❌ 登入失敗：伺服器未返回用戶資料，請再試一次');
+            setLoginLoading(false);
+            _loginLock = false;
             return;
         }
         // 登入成功：恢復按鈕 + 主動切換畫面（不單靠 onAuthStateChange）
-        console.log('🔐 Login success:', result.data.user?.email);
+        console.log('🔐 Login success:', result.data.user.email);
         setLoginLoading(false);
+        _loginLock = false;
         onAuthenticated(result.data.user);
     } catch(e) {
         console.error('🔐 Login exception:', e);
-        showLoginError('❌ 連線失敗：' + (e.message || '請檢查網絡'));
+        var errMsg = e.message || '';
+        if (errMsg.indexOf('Failed to fetch') >= 0 || errMsg.indexOf('NetworkError') >= 0) {
+            showLoginError('❌ 無法連接伺服器，請檢查網絡連線');
+        } else if (errMsg.indexOf('timeout') >= 0) {
+            showLoginError('❌ 連線超時，請檢查網絡後再試');
+        } else {
+            showLoginError('❌ 連線失敗：' + (errMsg || '請檢查網絡'));
+        }
         setLoginLoading(false);
+        _loginLock = false;
     }
 }
 

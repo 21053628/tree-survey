@@ -41,6 +41,30 @@
 // BOOT: 輪詢 CDN 載入完成
 // ============================================================
 
+// Leaflet CSS fallback (取代 HTML inline onerror，符合 CSP 要求)
+(function(){
+    var cssEl = document.getElementById('leafletCSS');
+    if (cssEl && cssEl.sheet) {
+        try {
+            // 跨域 CSS 無法讀取 cssRules，但可以用 length 檢查
+            // 如果沒有被 CORS 阻擋，cssRules.length >= 0 表示載入成功
+            if (cssEl.sheet.cssRules && cssEl.sheet.cssRules.length >= 0) return;
+        } catch(e) {
+            // 跨域安全錯誤：無法讀取 cssRules（正常情況，CSS 可能已成功載入）
+            // 用 .sheet.rules (IE fallback) 再試
+            try {
+                if (cssEl.sheet.rules && cssEl.sheet.rules.length >= 0) return;
+            } catch(e2) {
+                // 兩個方法都失敗，無法確認狀態，假設 CSS 可能未載入
+            }
+        }
+    }
+    if (cssEl) {
+        console.warn('🔄 Leaflet CSS fallback: switching to jsdelivr');
+        cssEl.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+    }
+})();
+
 console.log('🚀 v20 Boot...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true, 'CDN 載入中...');
@@ -51,13 +75,13 @@ const _poll = setInterval(function(){
     _pollCount++;
     if (window.__ALL_CDN_DONE__) {
         clearInterval(_poll);
-        if (window.__SDK_FAILED__) { setStatus(false, '❌ SDK 失敗'); return; }
+        if (window.__SDK_FAILED__) { setStatus(false, '❌ SDK 失敗'); showLoginError('❌ Supabase SDK 載入失敗，請檢查網絡連線後重新整理頁面'); return; }
         console.log('✅ All CDNs ready');
         initSupabase();
         // initSupabase() now calls initAuth() which will show/hide login based on session
         return;
     }
-    if (_pollCount > CDN_POLL_MAX) { clearInterval(_poll); setStatus(false, '⏰ CDN 超時'); }
+    if (_pollCount > CDN_POLL_MAX) { clearInterval(_poll); setStatus(false, '⏰ CDN 超時'); showLoginError('⏰ 系統載入超時，請檢查網絡連線後重新整理頁面'); }
 }, CDN_POLL_INTERVAL_MS);
 
 // ============================================================

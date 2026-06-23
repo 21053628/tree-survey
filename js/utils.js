@@ -225,7 +225,7 @@ function createCache(ttlMs) {
  */
 async function fetchAllPages(queryBuilder, pageSize) {
     pageSize = pageSize || FETCH_PAGE_SIZE;
-    const allData = [];
+    let allData = [];
     let from = 0;
     try {
         while (true) {

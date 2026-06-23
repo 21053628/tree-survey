@@ -7,13 +7,13 @@
  * Supabase 專案 URL
  * @type {string}
  */
-const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ? import.meta.env.VITE_SUPABASE_URL : 'https://qdwccjempkczvgewiepi.supabase.co';
+const SUPABASE_URL = 'https://qdwccjempkczvgewiepi.supabase.co';
 
 /**
  * Supabase Anon (Public) Key
  * @type {string}
  */
-const SUPABASE_ANON_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ? import.meta.env.VITE_SUPABASE_ANON_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkd2NjamVtcGtjenZnZXdpZXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI4NTMsImV4cCI6MjA5NzQ0ODg1M30.XoAly_tar_hUuNTXMJ0t4qkXst08JKzF9VQcs-Ov960';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkd2NjamVtcGtjenZnZXdpZXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzI4NTMsImV4cCI6MjA5NzQ0ODg1M30.XoAly_tar_hUuNTXMJ0t4qkXst08JKzF9VQcs-Ov960';
 
 /**
  * 香港中心座標 [lat, lng]

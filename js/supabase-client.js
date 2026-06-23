@@ -10,6 +10,9 @@
 function initSupabase() {
     if (!sdkReady()) {
         setStatus(false, '❌ SDK 未載入');
+        // 在登入界面顯示錯誤，因為 header 是隱藏的
+        showLoginError('⚠️ Supabase SDK 未成功載入，請檢查網絡連線後重新整理頁面');
+        console.error('🔐 initSupabase: SDK not ready');
         return false;
     }
     try {
@@ -24,6 +27,8 @@ function initSupabase() {
     } catch(e) {
         setStatus(false, 'Init 失敗');
         console.error('Supabase init error:', e);
+        // 在登入界面顯示錯誤
+        showLoginError('❌ Supabase 初始化失敗：' + (e.message || '未知錯誤') + '。請重新整理頁面');
         return false;
     }
 }

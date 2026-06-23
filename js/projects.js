@@ -65,13 +65,34 @@ async function _loadProjects() {
             return;
         }
 
-        // 計算每專案樹木數量 — 使用 Stored Function 一次查詢
+        // 計算每專案樹木數量 — 直接查 trees 表（取代不存在的 RPC function）
         const treeCounts = {};
         if (r.data.length > 0) {
             const projectIds = r.data.map(function(d) { return d.id; });
-            const countResult = await AppState.supabase.rpc('get_project_tree_counts', { project_ids: projectIds });
-            if (!countResult.error && countResult.data) {
-                countResult.data.forEach(function(row) { treeCounts[row.projectId] = parseInt(row.count, 10) || 0; });
+            try {
+                const treeResult = await AppState.supabase.from('trees')
+                    .select('projectId', { count: 'exact' })
+                    .in('projectId', projectIds);
+                if (!treeResult.error && treeResult.data) {
+                    // 客戶端聚合計數
+                    const countsMap = {};
+                    treeResult.data.forEach(function(row) {
+                        countsMap[row.projectId] = (countsMap[row.projectId] || 0) + 1;
+                    });
+                    projectIds.forEach(function(pid) {
+                        treeCounts[pid] = countsMap[pid] || 0;
+                    });
+                }
+            } catch(_) {
+                // RPC 不可用時 fallback：逐 project 查詢
+                for (var i = 0; i < projectIds.length; i++) {
+                    try {
+                        var cr = await AppState.supabase.from('trees')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('projectId', projectIds[i]);
+                        if (!cr.error) treeCounts[projectIds[i]] = cr.count || 0;
+                    } catch(_e) { treeCounts[projectIds[i]] = 0; }
+                }
             }
         }
 
