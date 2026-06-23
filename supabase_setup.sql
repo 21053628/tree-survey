@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS tree_photos (
     caption TEXT DEFAULT '',
     taken_at TIMESTAMPTZ,
     file_size BIGINT,
+    exif_latitude DOUBLE PRECISION,
+    exif_longitude DOUBLE PRECISION,
+    gps_diff_m DOUBLE PRECISION,
+    is_spoofed BOOLEAN DEFAULT FALSE,
+    exif_taken_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -207,6 +212,20 @@ ALTER TABLE tree_photos
   ADD CONSTRAINT tree_photos_project_id_fkey 
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
+-- ============================================================
+-- 第七部分：EXIF 防偽比對雷達 — 遷移現有資料表
+-- 如果 tree_photos 已存在但未有 EXIF 欄位，執行以下 ALTER TABLE
+-- ============================================================
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS exif_latitude DOUBLE PRECISION;
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS exif_longitude DOUBLE PRECISION;
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS gps_diff_m DOUBLE PRECISION;
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS is_spoofed BOOLEAN DEFAULT FALSE;
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS exif_taken_at TIMESTAMPTZ;
+ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS annotations JSONB DEFAULT '[]'::jsonb;
+
+-- ============================================================
+-- 完成！
+-- ============================================================
 -- ============================================================
 -- 完成！
 -- 執行後請回到 index.html 重新整理頁面。

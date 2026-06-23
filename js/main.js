@@ -153,76 +153,84 @@ window.addEventListener('resize', function() {
 // ============================================================
 
 document.addEventListener('click', function(e) {
-    const el = e.target.closest('[data-action]');
-    if (!el) return;
-    const action = el.getAttribute('data-action');
+    const actionEl = e.target.closest('[data-action]');
+    const annoEl = e.target.closest('[data-anno-tool]');
+    if (!actionEl && !annoEl) return;
 
-    switch (action) {
-        // --- Auth ---
-        case 'login': handleLogin(); break;
-        case 'logout': handleLogout(); break;
+    if (actionEl) {
+        const action = actionEl.getAttribute('data-action');
 
-        // --- Header ---
-        case 'diagnosis': diagnosis(); break;
-        case 'refresh': refreshAll(); break;
+        switch (action) {
+            // --- Auth ---
+            case 'login': handleLogin(); break;
+            case 'logout': handleLogout(); break;
 
-        // --- Navigation ---
-        case 'nav-projects': goToProjects(); break;
-        case 'tab-list': showListView(); break;
-        case 'tab-map': showMapView(); break;
+            // --- Header ---
+            case 'diagnosis': diagnosis(); break;
+            case 'refresh': refreshAll(); break;
 
-        // --- Project CRUD ---
-        case 'create-project': showProjectModal(); break;
-        case 'save-project': saveProject(); break;
-        case 'export-all': exportAllProjectsExcel(); break;
+            // --- Navigation ---
+            case 'nav-projects': goToProjects(); break;
+            case 'tab-list': showListView(); break;
+            case 'tab-map': showMapView(); break;
 
-        // --- Tree CRUD ---
-        case 'create-tree': showTreeModal(); break;
-        case 'save-tree': saveTree(); break;
-        case 'export-project': exportProjectTreesExcel(); break;
+            // --- Project CRUD ---
+            case 'create-project': showProjectModal(); break;
+            case 'save-project': saveProject(); break;
+            case 'export-all': exportAllProjectsExcel(); break;
 
-        // --- Modal ---
-        case 'close-modal': closeModal(el.getAttribute('data-modal')); break;
+            // --- Tree CRUD ---
+            case 'create-tree': showTreeModal(); break;
+            case 'save-tree': saveTree(); break;
+            case 'export-project': exportProjectTreesExcel(); break;
 
-        // --- GPS ---
-        case 'show-gps-dialog': showGPSDialog(); break;
-        case 'gps-start': closeModal('gpsPreModal'); doCaptureGPS(0); break;
-        case 'gps-retry': closeModal('gpsDenyModal'); doCaptureGPS(0); break;
-        case 'open-map-picker': openMapPicker(); break;
+            // --- Modal ---
+            case 'close-modal': closeModal(actionEl.getAttribute('data-modal')); break;
 
-        // --- Map Picker ---
-        case 'confirm-map-picker': confirmMapPicker(); break;
-        case 'close-map-picker': closeMapPicker(); break;
+            // --- GPS ---
+            case 'show-gps-dialog': showGPSDialog(); break;
+            case 'gps-start': closeModal('gpsPreModal'); doCaptureGPS(0); break;
+            case 'gps-retry': closeModal('gpsDenyModal'); doCaptureGPS(0); break;
+            case 'open-map-picker': openMapPicker(); break;
 
-        // --- Map Layers ---
-        case 'layer-dark': switchMainLayer('dark'); break;
-        case 'layer-imagery': switchMainLayer('imagery'); break;
-        case 'layer-topo': switchMainLayer('topo'); break;
-        case 'layer-street': switchMainLayer('street'); break;
-        case 'picker-layer-dark': switchPickerLayer('dark'); break;
-        case 'picker-layer-imagery': switchPickerLayer('imagery'); break;
-        case 'picker-layer-topo': switchPickerLayer('topo'); break;
-        case 'picker-layer-street': switchPickerLayer('street'); break;
+            // --- Map Picker ---
+            case 'confirm-map-picker': confirmMapPicker(); break;
+            case 'close-map-picker': closeMapPicker(); break;
 
-        // --- Health Filter ---
-        case 'filter-health':
-            toggleHealthFilter(el.getAttribute('data-health'), el);
-            break;
+            // --- Map Layers ---
+            case 'layer-dark': switchMainLayer('dark'); break;
+            case 'layer-imagery': switchMainLayer('imagery'); break;
+            case 'layer-topo': switchMainLayer('topo'); break;
+            case 'layer-street': switchMainLayer('street'); break;
+            case 'picker-layer-dark': switchPickerLayer('dark'); break;
+            case 'picker-layer-imagery': switchPickerLayer('imagery'); break;
+            case 'picker-layer-topo': switchPickerLayer('topo'); break;
+            case 'picker-layer-street': switchPickerLayer('street'); break;
 
-        // --- GPS Locate ---
-        case 'locate-me': locateMe(); break;
+            // --- Health Filter ---
+            case 'filter-health':
+                toggleHealthFilter(actionEl.getAttribute('data-health'), actionEl);
+                break;
 
-        // --- Photos ---
-        case 'trigger-photo-upload': document.getElementById('photoFileInput').click(); break;
-        case 'photo-prev': photoViewerNav(-1); break;
-        case 'photo-next': photoViewerNav(1); break;
-        case 'edit-photo-caption': editPhotoCaption(); break;
-        case 'download-photo': downloadCurrentPhoto(); break;
-        case 'delete-photo': deleteCurrentPhoto(); break;
-        case 'save-photo-caption': savePhotoCaption(); break;
+            // --- GPS Locate ---
+            case 'locate-me': locateMe(); break;
+
+            // --- Photos ---
+            case 'trigger-photo-upload': document.getElementById('photoFileInput').click(); break;
+            case 'photo-prev': photoViewerNav(-1); break;
+            case 'photo-next': photoViewerNav(1); break;
+            case 'edit-photo-caption': editPhotoCaption(); break;
+            case 'download-photo': downloadCurrentPhoto(); break;
+            case 'delete-photo': deleteCurrentPhoto(); break;
+            case 'save-photo-caption': savePhotoCaption(); break;
+        }
+    }
+
+    // --- Annotation Toolbar (data-anno-tool 獨立屬性) ---
+    if (annoEl && typeof handleAnnotationToolClick === 'function') {
+        handleAnnotationToolClick(annoEl.getAttribute('data-anno-tool'));
     }
 });
-
 // ============================================================
 // 全域事件委派：搜尋 input（data-action 在 input 元素上）
 // ============================================================

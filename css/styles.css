@@ -196,6 +196,25 @@ tr:hover td{background:rgba(99,102,241,.03)}.null-cell{color:#4b5563;font-style:
 .photo-viewer-nav .photo-counter{color:var(--text2);font-size:.8rem;min-width:60px;text-align:center}
 .photo-viewer-caption{margin-top:10px;font-size:.82rem;color:var(--text2);text-align:center;font-style:italic}
 .photo-upload-btn{display:inline-flex;align-items:center;gap:5px}.photo-upload-btn input[type=file]{display:none}
+
+/* ============================================================ */
+/* ANNOTATION CANVAS & TOOLBAR                                  */
+/* ============================================================ */
+.annotation-canvas-wrap{position:relative;display:inline-block;max-width:100%;margin:0 auto;line-height:0;user-select:none;-webkit-user-select:none}
+.annotation-canvas-wrap img{max-width:100%;max-height:65vh;display:block;border-radius:8px}
+.annotation-canvas-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;border-radius:8px;touch-action:none}
+.annotation-canvas-wrap.view-mode canvas{cursor:default;pointer-events:none}
+.annotation-toolbar{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:10px;flex-wrap:wrap}
+.annotation-tool{padding:6px 12px;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,42,.5);color:#94a3b8;font-family:inherit;transition:all .15s;min-height:36px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.annotation-tool:hover{background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.25);color:#cbd5e1}
+.annotation-tool.active{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#f87171;box-shadow:0 0 8px rgba(239,68,68,.2)}
+.annotation-tool.annotation-save{background:var(--green);color:#fff;border-color:var(--green)}
+.annotation-tool.annotation-save:hover{background:#059669}
+.annotation-tool.annotation-save.saved{background:#059669;animation:saveFlash .6s ease}
+@keyframes saveFlash{0%,100%{box-shadow:0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 20px rgba(16,185,129,.6)}}
+.annotation-hint{display:block;font-size:.68rem;color:var(--text2);margin-top:8px;text-align:center;min-height:18px}
+.annotation-hint.warn{color:var(--amber)}
+
 /* LOGIN OVERLAY */
 .login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -223,6 +242,17 @@ tr:hover td{background:rgba(99,102,241,.03)}.null-cell{color:#4b5563;font-style:
 .popup-photo-strip .strip-more:hover{background:rgba(99,102,241,.2)}
 .popup-photo-strip .strip-loading{font-size:.68rem;color:var(--text2);padding:4px 0}
 .popup-photo-strip .strip-empty{font-size:.65rem;color:#4b5563;padding:4px 0}
+
+/* ============================================================ */
+/* EXIF GPS 防偽比對雷達 — SPOOF WARNING STYLES */
+/* ============================================================ */
+.photo-thumb.photo-spoofed{border-color:#ef4444!important;box-shadow:0 0 12px rgba(239,68,68,.5),0 0 36px rgba(239,68,68,.15);animation:spoofPulse 1.5s ease-in-out infinite}
+@keyframes spoofPulse{0%,100%{box-shadow:0 0 12px rgba(239,68,68,.5),0 0 36px rgba(239,68,68,.15)}50%{box-shadow:0 0 22px rgba(239,68,68,.8),0 0 56px rgba(239,68,68,.25)}}
+.photo-exif-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#a5b4fc;font-size:.55rem;padding:2px 5px;border-radius:4px;line-height:1.2;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;z-index:1}
+.photo-exif-badge.spoof{color:#fca5a5;background:rgba(127,29,29,.9)}
+.photo-spoof-label{position:absolute;bottom:22px;left:0;right:0;background:rgba(185,28,28,.92);color:#fecaca;font-size:.6rem;font-weight:700;text-align:center;padding:2px 4px;z-index:2;line-height:1.3;letter-spacing:.3px}
+.photo-viewer-spoof-banner{display:none;background:linear-gradient(135deg,rgba(185,28,28,.95),rgba(127,29,29,.95));color:#fecaca;font-size:.82rem;font-weight:700;text-align:center;padding:10px 16px;border-radius:8px;margin-bottom:12px;border:2px solid #ef4444;box-shadow:0 0 20px rgba(239,68,68,.35);animation:spoofBannerFlash 2s ease-in-out infinite}
+@keyframes spoofBannerFlash{0%,100%{border-color:#ef4444;box-shadow:0 0 20px rgba(239,68,68,.35)}50%{border-color:#f87171;box-shadow:0 0 32px rgba(239,68,68,.6)}}
 
 /* ============================================================ */
 /* RESPONSIVE: Tablet */
@@ -253,7 +283,7 @@ tr:hover td{background:rgba(99,102,241,.03)}.null-cell{color:#4b5563;font-style:
 }
 
 /* ============================================================ */
-/* RESPONSIVE: Mobile (merged all @media(max-width:480px) blocks) */
+/* RESPONSIVE: Mobile */
 /* ============================================================ */
 @media(max-width:480px){
     .header-logo{font-size:.9rem}
@@ -278,9 +308,7 @@ tr:hover td{background:rgba(99,102,241,.03)}.null-cell{color:#4b5563;font-style:
     .filter-toggle{padding:3px 6px;font-size:.6rem}
     .layer-toggle{padding:3px 6px;font-size:.6rem}
     .map-top-bar .map-search{min-width:80px}
-    /* Login card mobile */
     .login-card{padding:24px 18px;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
     .login-overlay{align-items:flex-end}
-    /* Photo grid mobile */
     .photo-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
 }

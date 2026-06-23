@@ -11,7 +11,7 @@
         script-src 'self' 'unsafe-eval' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net;
         style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net;
         img-src 'self' data: blob: https: http:;
-        connect-src https://*.supabase.co wss://*.supabase.co https://ipapi.co http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*;
+        connect-src https://*.supabase.co wss://*.supabase.co https://ipapi.co http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://unpkg.com;
         worker-src blob:;
     ">
     <title>🌳 樹木調查 Supabase V21</title>
@@ -299,7 +299,20 @@
 <div class="modal-overlay z-top hidden" id="photoViewerModal">
     <div class="modal" style="max-width:90vw;width:700px;text-align:center">
         <h3 id="photoViewerTitle">📸 照片</h3>
-        <img class="photo-viewer-img" id="photoViewerImg" src="" alt="Tree Photo">
+        <div class="annotation-canvas-wrap" id="annotationCanvasWrap">
+            <img class="photo-viewer-img" id="photoViewerImg" src="" alt="Tree Photo">
+            <canvas id="annotationCanvas"></canvas>
+        </div>
+        <!-- ANNOTATION TOOLBAR -->
+        <div class="annotation-toolbar" id="annotationToolbar">
+            <button class="annotation-tool active" data-anno-tool="view" title="檢視模式（不可畫）">🖐️</button>
+            <button class="annotation-tool" data-anno-tool="circle" title="畫紅圈標示">⭕ 畫圈</button>
+            <button class="annotation-tool" data-anno-tool="line" title="畫線標示">📏 畫線</button>
+            <button class="annotation-tool" data-anno-tool="undo" title="撤銷上一步">↩️</button>
+            <button class="annotation-tool" data-anno-tool="clear" title="清除全部標記">🗑️</button>
+            <button class="annotation-tool annotation-save" data-anno-tool="save" title="儲存標記">💾 儲存標記</button>
+        </div>
+        <span class="annotation-hint" id="annotationHint">🖐️ 檢視模式 — 點擊工具開始標記</span>
         <div class="photo-viewer-caption" id="photoViewerCaption"></div>
         <div class="photo-viewer-nav">
             <button id="photoViewerPrev" data-action="photo-prev">◀ 上一張</button>
@@ -340,8 +353,10 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ===== JS 模組（依賴順序載入）===== -->
-<script src="js/config.js"></script>
+    <!-- ===== 第三方庫 ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.iife.js"></script>
+    <!-- ===== JS 模組（依賴順序載入）===== -->
+    <script src="js/config.js"></script>
 <script src="js/treeapp.js"></script>
 <script src="js/dom.js"></script>
 <script src="js/utils.js"></script>

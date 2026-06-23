@@ -7,6 +7,34 @@
  */
 
 // ============================================================
+// 查詢樹木是否含有 spoofed 照片（memory cache）
+// ============================================================
+
+/** @type {Object<string, boolean>} treeId → hasSpoofedPhotos */
+AppState._treeSpoofCache = {};
+
+/**
+ * 批次載入當前專案中所有照片的 is_spoofed 狀態，建立快取
+ * @param {string} projectId
+ */
+async function _loadSpoofStatusForProject(projectId) {
+    if (!AppState.supabase || !projectId) return;
+    try {
+        const r = await AppState.supabase.from('tree_photos')
+            .select('tree_id, is_spoofed')
+            .eq('project_id', projectId)
+            .eq('is_spoofed', true)
+            .limit(1000);
+        if (r.data) {
+            AppState._treeSpoofCache = {};
+            r.data.forEach(function(row) {
+                if (row.tree_id) AppState._treeSpoofCache[row.tree_id] = true;
+            });
+        }
+    } catch(e) { /* ignore */ }
+}
+
+// ============================================================
 // 樹木列表載入（含 debounce + 快取）
 // ============================================================
 
@@ -115,12 +143,20 @@ function _renderTreeTable(data) {
     data.forEach(function(d) {
         const tr = document.createElement('tr');
 
-        // Col: Tree ID
+        // Col: Tree ID（含 spoofed 紅旗警告）
         const tdId = document.createElement('td');
         const strong = document.createElement('strong');
         strong.textContent = d.treeIdNo || '—';
         strong.style.color = '#fbbf24';
         tdId.appendChild(strong);
+        // 如果有 spoofed 照片，顯示紅旗 icon
+        if (AppState._treeSpoofCache[d.id]) {
+            const spoofIcon = document.createElement('span');
+            spoofIcon.style.cssText = 'margin-left:6px;font-size:1rem;cursor:help';
+            spoofIcon.textContent = '🚨';
+            spoofIcon.title = '呢棵樹有疑似非現場照片！';
+            tdId.appendChild(spoofIcon);
+        }
         tr.appendChild(tdId);
 
         // Col: Botanical Name
@@ -200,13 +236,21 @@ function _renderTreeCards(data) {
         card.className = 'tree-card';
         card.addEventListener('click', function() { editTree(d.id); });
 
-        // Row 1: ID + Recommendation badge
+        // Row 1: ID + Recommendation badge + spoofed 紅旗
         const row1 = document.createElement('div');
         row1.className = 'tc-row';
         const idSpan = document.createElement('span');
         idSpan.className = 'tc-id';
         idSpan.textContent = '🔢 ' + (d.treeIdNo || '—');
         row1.appendChild(idSpan);
+        // spoofed 紅旗
+        if (AppState._treeSpoofCache[d.id]) {
+            const spoofIcon = document.createElement('span');
+            spoofIcon.style.cssText = 'font-size:1.1rem;margin-left:4px';
+            spoofIcon.textContent = '🚨';
+            spoofIcon.title = '呢棵樹有疑似非現場照片！';
+            row1.appendChild(spoofIcon);
+        }
         row1.appendChild(recBadge(d.recommendation));
         card.appendChild(row1);
 

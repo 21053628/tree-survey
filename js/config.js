@@ -190,6 +190,13 @@ const POPUP_PHOTO_LIMIT = 5;
 /** @type {number} Popup Strip 顯示張數 */
 const POPUP_STRIP_DISPLAY = 4;
 
+// ============================================================
+// EXIF GPS 防偽比對雷達常數
+// ============================================================
+
+/** @type {number} EXIF 座標 vs 樹木 DB 座標最大容許距離（公尺），超過即 Red Flag */
+const SPOOF_DISTANCE_THRESHOLD = 50;
+
 /**
  * CDN 資源映射表
  * @type {Array<{key: string, urls: string[]}>}
