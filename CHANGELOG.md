@@ -5,6 +5,29 @@
 
 ---
 
+## [v22.0] — 2026-06-24
+
+### Added
+- **🚨 EXIF GPS 防偽雷達**：從照片 EXIF 提取 GPS 座標，與樹木記錄座標進行 Haversine 距離比對（閾值 50m），自動標記疑似非現場照片
+- **🚨 Spooffed 紅旗 UI**：樹木列表（表格/卡片）顯示 🚨 紅旗圖示、照片縮圖紅色邊框 + 警告標籤、照片檢視器內紅色 Spooff Banner
+- **TreeApp 集中式命名空間**：新增 `treeapp.js` 模組，所有功能收攏至 `TreeApp.*` 子命名空間，消除全域函數污染
+- **照片上傳 DB-First 交易安全**：上傳流程重構為「先寫 DB → 再上傳 Storage → 失敗 Rollback DB」，防止孤兒 Storage 檔案
+- **並行照片上傳 + 進度追蹤**：Worker Pool（並行上限 4），即時上傳進度條
+- 整合 **exifr** 庫讀取 EXIF 資訊（GPS 座標、拍攝時間）
+- `tree_photos` 資料表新增 `exif_latitude`、`exif_longitude`、`gps_diff_m`、`is_spoofed`、`exif_taken_at`、`annotations` 欄位
+
+### Changed
+- **集中式事件委派**：`main.js` 重構，所有 `data-action` / `data-anno-tool` 按鈕統一由 `document.addEventListener('click')` 處理，取代 inline `onclick`
+- 每頁筆數由 10 調整為 30（`PAGE_SIZE`）
+- 照片上傳流程改為並行處理，大幅提升上傳效率
+- CDN 資源映射表新增 `heic2any` 庫
+
+### Security
+- EXIF GPS 防偽比對防止非現場照片冒充
+- DB-First 交易模式防止 Storage 孤兒檔案
+
+---
+
 ## [v21.0] — 2026-06-15
 
 ### Added
@@ -792,5 +815,5 @@
 > - **v0.1 至 v0.12**（2021–2022）為概念驗證與原型階段，使用純靜態 HTML/CSS/JS。
 > - **v1.0 至 v2.6**（2022–2024）為 Firebase 時代，逐步建立完整功能。
 > - **v3.0**（2024-02）起全面遷移至 Supabase，奠定企業級安全架構基礎。
-> - 目前最新穩定版為 **v21.0**（2026-06-15）。
+> - 目前最新穩定版為 **v22.0**（2026-06-24）。
 > - 本系統由 **Terry Cheung (60524440)** 主導開發。

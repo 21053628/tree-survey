@@ -1,4 +1,4 @@
-# 🌳 樹木調查與智慧管理系統 (Tree Survey & Management System) — v21.0
+# 🌳 樹木調查與智慧管理系統 (Tree Survey & Management System) — v22.0
 
 這是一套專為建築地盤環境與專業樹木調查（Tree Survey）設計的輕量化、高安全性 **Jamstack 前後端分離網頁系統**。前端採用響應式（Mobile-First）架構設計，方便前線調查員在戶外使用流動裝置即時記錄；後端完全整合 **Supabase 雲端架構**，具備企業級的身份驗證、行級安全防禦（RLS）以及多租戶數據隔離機制。
 
@@ -14,6 +14,8 @@
 * **🔒 相片儲存安全箱 (Secure Storage Bucket)：** 相片存儲庫實施 RLS Objects Policies。只有已認證員工能夠執行照片上傳（INSERT）與刪除（DELETE），防止雲端儲存空間遭惡意爆破或盜用。
 * **🛡️ 內容安全政策 (Content Security Policy, CSP)：** 全面實施 CSP 標頭，精細控制 `script-src`、`connect-src` 與 `worker-src` 白名單，有效阻止 XSS 攻擊向量與供應鏈污染。
 * **⚠️ 登入免責聲明：** 登入頁面包含法律免責聲明及系統擁有者資訊，明確告知未經授權存取之法律後果。
+* **🚨 EXIF GPS 防偽雷達：** 從照片 EXIF 提取 GPS 座標，與樹木記錄座標進行 Haversine 比對（閾值 50m），自動標記疑似非現場照片（`is_spoofed`）。
+* **🔄 DB-First 交易安全：** 照片上傳採用「先寫 DB → 再上傳 Storage → 失敗 Rollback DB」模式，防止孤兒雲端檔案。
 
 ---
 
@@ -42,9 +44,11 @@
 ### 5. 📸 相片智能上傳與標註工具箱 (支援 HEIC)
 * **HEIC 原生轉換：** 調查員使用 iPhone 拍照時，系統會自動在前端將 `.heic` / `.heif` 轉換為標準 `.jpg` 格式。
 * **前端智能雙軌壓縮：** 檔案上傳前，會自動壓縮成 `1920px` 高清大圖與 `300px` 輕量縮圖，大幅節省流動網路頻寬與雲端儲存空間。
+* **並行上傳 + 進度追蹤：** Worker Pool（並行上限 4），即時顯示上傳進度。
 * **照片標註工具箱：** 支援畫紅圈（⭕）、畫線（📏）、撤銷（↩️）、清除（🗑️）、儲存標記（💾），標註數據以歸一化座標儲存，不受圖片縮放影響。
 * **前後張導航：** 照片檢視器支援 ◀ 上一張 / 下一張 ▶ 瀏覽。
 * **照片管理：** 支援說明（Caption）編輯、拍攝日期記錄、照片下載與刪除。
+* **🚨 防偽紅旗：** 樹木列表與照片縮圖顯示 🚨 紅旗圖示，照片檢視器內紅色 Spooff Banner，醒目警示。
 
 ### 6. 📊 數據智能匯出 (Excel Reporting)
 * 全自動產生格式化報表，支援「單一專案樹木清單匯出」與「全系統專案大總結匯出」。
@@ -52,7 +56,7 @@
 
 ### 7. 🔍 搜尋、分頁與確認機制
 * **即時搜尋：** 專案列表與樹木列表皆支援關鍵字即時過濾（Debounce 300ms）。
-* **分頁導航：** 每頁顯示 10 筆，支援頁數導航。
+* **分頁導航：** 每頁顯示 30 筆，支援頁數導航。
 * **確認刪除對話框：** 刪除操作需經兩步驟確認（Confirm Modal），防止誤刪。
 * **Toast 通知系統：** 操作結果即時彈出通知。
 
@@ -74,26 +78,26 @@
 | **地圖** | Leaflet v1.9.4 (OpenStreetMap / CartoDB / ESRI 多圖源) |
 | **後端 BaaS** | Supabase (PostgreSQL + Auth + Storage + RLS) |
 | **Excel 匯出** | SheetJS (xlsx) |
-| **圖片處理** | HTML5 Canvas + exifr (EXIF 讀取) |
+| **圖片處理** | HTML5 Canvas + exifr (EXIF 讀取) + heic2any (HEIC 轉換) |
 | **CDN** | unpkg / jsDelivr (所有資源固定版本號) |
-| **安全** | CSP 標頭、Supabase RLS、多租戶 `auth.uid()` 隔離 |
+| **安全** | CSP 標頭、Supabase RLS、多租戶 `auth.uid()` 隔離、EXIF GPS 防偽比對 |
 
 ### JS 模組架構
 
 | 模組 | 職責 |
 |------|------|
-| `main.js` | CDN 資源動態載入、應用程式初始化 |
-| `treeapp.js` | 事件委派路由、全局動作分派中樞 |
-| `config.js` | Supabase URL / Anon Key 配置 |
+| `main.js` | CDN 資源動態載入、應用程式初始化、集中式事件委派 |
+| `treeapp.js` | TreeApp 集中式命名空間，消除全域函數污染 |
+| `config.js` | Supabase URL / Anon Key 配置、所有系統常數 |
 | `supabase-client.js` | Supabase JS Client 封裝、錯誤處理 |
 | `auth.js` | 登入/登出、Session 管理、Login Overlay |
 | `state.js` | 全域狀態管理（當前專案、樹木分頁、地圖狀態） |
 | `projects.js` | 專案 CRUD、列表渲染、卡片視圖 |
-| `trees.js` | 樹木 CRUD、表單管理、表格/卡片渲染 |
+| `trees.js` | 樹木 CRUD、表單管理、表格/卡片渲染、Spoof 紅旗顯示 |
 | `species.js` | 物種建議下拉選單、雙欄聯動 |
 | `map.js` | Leaflet 地圖渲染、Marker 分色、圖層切換、地圖搜尋 |
 | `gps.js` | GPS 三級定位、地圖揀位 Modal、圖層切換 |
-| `photos.js` | 照片上傳/壓縮/HEIC轉換、標註工具箱、照片檢視器 |
+| `photos.js` | 照片上傳/壓縮/HEIC轉換、EXIF GPS 防偽比對、標註工具箱、照片檢視器 |
 | `excel.js` | Excel 報表匯出 |
 | `ui.js` | Toast 通知、Modal 控制、視圖切換、連線狀態 |
 | `dom.js` | DOM 輔助函式（建立元素、Badge 元件） |
@@ -161,6 +165,6 @@
 
 ## 📋 版本紀錄
 
-詳細版本變更請參閱 [`CHANGELOG.md`](./CHANGELOG.md)。目前最新穩定版為 **v21.0**（2026-06-15）。
+詳細版本變更請參閱 [`CHANGELOG.md`](./CHANGELOG.md)。目前最新穩定版為 **v22.0**（2026-06-24）。
 
 > © 2020–2026 Terry Cheung (60524440). All rights reserved.

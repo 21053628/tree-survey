@@ -504,11 +504,11 @@ async function saveTree() {
     toast(eid ? '✅ 已更新' : '✅ 已新增');
     closeModal('treeModal');
     AppState._cachedTreeData = [];
-    if (AppState.mapObj) { destroyMap(); }
     AppState.treesCache.invalidate();
     await loadProjectTrees();
     AppState.projectsCache.invalidate();
     await loadProjects();
+    if (AppState.currentDetailTab === 'map') { renderMap(); }
 }
 
 /**
@@ -539,7 +539,6 @@ if (confirmBtnEl) {
         } catch(e) { toast('❌ ' + e.message, 'error'); }
         closeModal('confirmModal');
         AppState._cachedTreeData = [];
-        if (AppState.mapObj) { destroyMap(); }
         if (AppState.currentView === 'projects') {
             AppState.projectsCache.invalidate();
             loadProjects();
@@ -549,6 +548,7 @@ if (confirmBtnEl) {
             loadProjectTrees();
             AppState.projectsCache.invalidate();
             loadProjects();
+            if (AppState.currentDetailTab === 'map') { renderMap(); }
         }
     });
 }

@@ -14,7 +14,7 @@
         connect-src https://*.supabase.co wss://*.supabase.co https://ipapi.co http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://unpkg.com;
         worker-src blob:;
     ">
-    <title>🌳 樹木調查 Supabase V21</title>
+    <title>🌳 樹木調查 Supabase V22</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           id="leafletCSS">
     <link rel="stylesheet" href="css/styles.css">
@@ -165,9 +165,9 @@
 </div>
 
 <footer class="footer-bar hidden" id="mainFooter">
-    <span class="footer-owner">© 2025 Terry Cheung (60524440) — 樹木調查系統</span>
+    <span class="footer-owner">© 2020–2026 Terry Cheung (60524440) — 樹木調查系統</span>
     <span class="footer-disclaimer">⚠️ 免責聲明：此系統僅供授權人員使用。所有資料屬機密資訊，未經授權不得複製、分發或披露。系統內資料僅供參考，不構成任何法律或專業建議。</span>
-    <span class="footer-version">v21</span>
+    <span class="footer-version">v22</span>
 </footer>
 
 <button class="fab hidden" id="fabAddTree" data-action="create-tree" title="新增樹木">➕</button>
@@ -370,6 +370,34 @@
         </div>
         <div class="changelog-body">
             <p class="changelog-intro">本文件記錄「🌳 樹木調查與智慧管理系統」自 2020 年起的所有顯著變更。格式參考 <a href="https://keepachangelog.com/zh-TW/1.0.0/" target="_blank" rel="noopener">Keep a Changelog</a>。</p>
+            <div class="changelog-divider"></div>
+
+            <!-- v22.0 -->
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-ver-tag">v22.0</span>
+                    <span class="changelog-ver-date">2026-06-24</span>
+                </div>
+                <div class="changelog-section"><span class="changelog-cat cat-added">Added</span><ul>
+                    <li><strong>🚨 EXIF GPS 防偽雷達</strong>：從照片 EXIF 提取 GPS 座標，與樹木記錄座標進行 Haversine 距離比對（閾值 50m），自動標記疑似非現場照片</li>
+                    <li><strong>🚨 Spooffed 紅旗 UI</strong>：樹木列表顯示 🚨 紅旗圖示、照片縮圖紅色邊框 + 警告標籤、照片檢視器紅色 Spooff Banner</li>
+                    <li><strong>TreeApp 集中式命名空間</strong>：新增 treeapp.js 模組，所有功能收攏至 TreeApp.* 子命名空間</li>
+                    <li><strong>照片上傳 DB-First 交易安全</strong>：先寫 DB → 再上傳 Storage → 失敗 Rollback DB，防止孤兒 Storage 檔案</li>
+                    <li><strong>並行照片上傳 + 進度追蹤</strong>：Worker Pool（並行上限 4），即時上傳進度條</li>
+                    <li>整合 exifr 庫讀取 EXIF 資訊（GPS 座標、拍攝時間）</li>
+                    <li>tree_photos 資料表新增 exif_latitude、exif_longitude、gps_diff_m、is_spoofed、exif_taken_at、annotations 欄位</li>
+                </ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-changed">Changed</span><ul>
+                    <li><strong>集中式事件委派</strong>：main.js 重構，所有 data-action / data-anno-tool 按鈕統一由 addEventListener 處理，取代 inline onclick</li>
+                    <li>每頁筆數由 10 調整為 30（PAGE_SIZE）</li>
+                    <li>照片上傳流程改為並行處理，大幅提升上傳效率</li>
+                    <li>CDN 資源映射表新增 heic2any 庫</li>
+                </ul></div>
+                <div class="changelog-section"><span class="changelog-cat cat-security">Security</span><ul>
+                    <li>EXIF GPS 防偽比對防止非現場照片冒充</li>
+                    <li>DB-First 交易模式防止 Storage 孤兒檔案</li>
+                </ul></div>
+            </div>
             <div class="changelog-divider"></div>
 
             <!-- v21.0 -->
@@ -1109,7 +1137,7 @@
                     <li><strong>v0.1 至 v0.12</strong>（2021–2022）為概念驗證與原型階段，使用純靜態 HTML/CSS/JS。</li>
                     <li><strong>v1.0 至 v2.6</strong>（2022–2024）為 Firebase 時代，逐步建立完整功能。</li>
                     <li><strong>v3.0</strong>（2024-02）起全面遷移至 Supabase，奠定企業級安全架構基礎。</li>
-                    <li>目前最新穩定版為 <strong>v21.0</strong>（2026-06-15）。</li>
+                    <li>目前最新穩定版為 <strong>v22.0</strong>（2026-06-24）。</li>
                     <li>本系統由 <strong>Terry Cheung (60524440)</strong> 主導開發。</li>
                 </ul>
             </div>
