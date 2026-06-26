@@ -65,7 +65,7 @@
     }
 })();
 
-console.log('🚀 v22 Boot...');
+console.log('🚀 v23 Boot...');
 console.log('Protocol:', window.location.protocol, '| GPS possible:', canUseGPS());
 setStatus(true, 'CDN 載入中...');
 showLoginScreen();
