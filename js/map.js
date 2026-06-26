@@ -14,6 +14,10 @@
  * 銷毀當前地圖及所有標記（釋放記憶體）
  */
 function destroyMap() {
+    if (AppState._markerClusterGroup) {
+        if (AppState.mapObj) AppState.mapObj.removeLayer(AppState._markerClusterGroup);
+        AppState._markerClusterGroup = null;
+    }
     if (AppState.mapObj) { AppState.mapObj.remove(); AppState.mapObj = null; }
     AppState.mapMarkers = [];
     AppState.markerLookup = {};
@@ -97,10 +101,26 @@ function buildTreePopupContent(t) {
     container.appendChild(document.createTextNode('💚 ' + (t.healthCondition || '—') + ' | 🏗️ ' + (t.structuralCondition || '—')));
     container.appendChild(document.createElement('br'));
 
-    // Row 7: GPS Coordinates
+    // Row 7: GPS Coordinates (WGS84)
     const lat = Number(t.latitude), lng = Number(t.longitude);
-    container.appendChild(document.createTextNode('📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6)));
+    container.appendChild(document.createTextNode('📍 WGS84: ' + lat.toFixed(6) + ', ' + lng.toFixed(6)));
     container.appendChild(document.createElement('br'));
+
+    // Row 7b: HK1980 Coordinates (if available)
+    let hasHK = t.easting != null && t.northing != null && !isNaN(Number(t.easting)) && !isNaN(Number(t.northing));
+    if (!hasHK && lat && lng) {
+        const hk = TreeApp.coords.wgs84ToHK1980(lat, lng);
+        if (hk) {
+            t.easting = hk.easting;
+            t.northing = hk.northing;
+            hasHK = true;
+        }
+    }
+    if (hasHK) {
+        const e = Number(t.easting), n = Number(t.northing);
+        container.appendChild(document.createTextNode('📐 HK1980: ' + e.toFixed(1) + 'E, ' + n.toFixed(1) + 'N'));
+        container.appendChild(document.createElement('br'));
+    }
 
     // Row 8: Photo Strip placeholder
     const stripDiv = document.createElement('div');
@@ -158,7 +178,7 @@ async function _doRenderMapFromDB() {
     try {
         const allTrees = await fetchAllPages(
             AppState.supabase.from('trees')
-                .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude')
+                .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude,easting,northing')
                 .eq('projectId', AppState.currentProjectId)
                 .order('treeIdNo', { ascending: true })
         );
@@ -185,6 +205,19 @@ function _doRenderMap(trees) {
         b.classList.toggle('active', b.dataset.layer === AppState._currentLayer);
     });
 
+    // HK1980 → WGS84 轉換：為只有 easting/northing 而冇 lat/lng 嘅樹木補上座標
+    trees.forEach(function(t) {
+        const hasLatLng = t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude));
+        if (hasLatLng) return;
+        const hasHK = t.easting != null && t.northing != null && !isNaN(Number(t.easting)) && !isNaN(Number(t.northing));
+        if (!hasHK) return;
+        const wgs = TreeApp.coords.hk1980ToWGS84(Number(t.easting), Number(t.northing));
+        if (wgs) {
+            t.latitude = wgs.lat;
+            t.longitude = wgs.lng;
+        }
+    });
+
     /** @type {object[]} */
     const withCoords = trees.filter(function(t) {
         return t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude));
@@ -197,6 +230,26 @@ function _doRenderMap(trees) {
         return;
     }
 
+    // 建立 MarkerClusterGroup（防止密集標記重疊）
+    AppState._markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        disableClusteringAtZoom: MAP_FOCUS_ZOOM,
+        iconCreateFunction: function(cluster) {
+            var count = cluster.getChildCount();
+            var size = 'small';
+            if (count >= 10) size = 'medium';
+            if (count >= 100) size = 'large';
+            return L.divIcon({
+                html: '<div><span>' + count + '</span></div>',
+                className: 'marker-cluster marker-cluster-' + size,
+                iconSize: L.point(40, 40)
+            });
+        }
+    });
+
     const bounds = [];
     withCoords.forEach(function(t) {
         const lat = Number(t.latitude), lng = Number(t.longitude);
@@ -206,7 +259,7 @@ function _doRenderMap(trees) {
             html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',
             iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
         });
-        const marker = L.marker([lat, lng], { icon: icon }).addTo(AppState.mapObj);
+        const marker = L.marker([lat, lng], { icon: icon });
         marker._treeId = t.treeIdNo || '';
         marker._health = t.healthCondition || '';
         marker._botanicalName = t.botanicalName || '';
@@ -216,10 +269,13 @@ function _doRenderMap(trees) {
             permanent: true, direction: 'top', className: 'tree-label', offset: [0, -8]
         });
         marker.bindPopup(buildTreePopupContent(t));
+        AppState._markerClusterGroup.addLayer(marker);
         AppState.mapMarkers.push(marker);
         if (t.id) AppState.markerLookup[t.id] = marker;
         bounds.push([lat, lng]);
     });
+
+    AppState.mapObj.addLayer(AppState._markerClusterGroup);
 
     // Popup 打開時載入照片 strip + 綁定按鈕事件（事件委派，取代 inline onclick）
     AppState.mapObj.on('popupopen', function(e) {
@@ -385,7 +441,7 @@ function searchMapTrees() {
  * 根據搜尋框 + 健康狀態濾鏡更新地圖標記顯示
  */
 function applyMapFilters() {
-    if (!AppState.mapObj) return;
+    if (!AppState.mapObj || !AppState._markerClusterGroup) return;
     const query = (document.getElementById('mapSearchInput')?.value || '').trim().toLowerCase();
     let visibleCount = 0;
     AppState.mapMarkers.forEach(function(m) {
@@ -396,8 +452,8 @@ function applyMapFilters() {
         const hiddenByHealth = AppState._hiddenHealth[health] || false;
         const matchesSearch = !query || tid.indexOf(query) >= 0 || bname.indexOf(query) >= 0 || cname.indexOf(query) >= 0;
         const visible = !hiddenByHealth && matchesSearch;
-        if (visible) { m.addTo(AppState.mapObj); visibleCount++; }
-        else { AppState.mapObj.removeLayer(m); }
+        if (visible) { AppState._markerClusterGroup.addLayer(m); visibleCount++; }
+        else { AppState._markerClusterGroup.removeLayer(m); }
     });
     document.getElementById('mapStatus').textContent = '顯示 ' + visibleCount + ' / ' + AppState.mapMarkers.length + ' 棵';
 }

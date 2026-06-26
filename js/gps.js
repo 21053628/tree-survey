@@ -9,6 +9,28 @@
  */
 
 // ============================================================
+// 輔助：寫入 WGS84 座標後同步計算 HK1980
+// ============================================================
+
+/**
+ * 將 WGS84 座標寫入表單，並同步計算 HK1980
+ * @param {number} lat
+ * @param {number} lng
+ */
+function _fillCoords(lat, lng) {
+    document.getElementById('tree_latitude').value = lat;
+    document.getElementById('tree_longitude').value = lng;
+    // 同步計算 HK1980
+    if (typeof wgs84ToHK1980 === 'function') {
+        const hk = wgs84ToHK1980(lat, lng);
+        if (hk) {
+            document.getElementById('tree_easting').value = hk.easting;
+            document.getElementById('tree_northing').value = hk.northing;
+        }
+    }
+}
+
+// ============================================================
 // GPS 前置對話框
 // ============================================================
 
@@ -73,8 +95,7 @@ function doCaptureGPS(stage) {
             const lat = parseFloat(pos.coords.latitude.toFixed(7));
             const lng = parseFloat(pos.coords.longitude.toFixed(7));
             const acc = Math.round(pos.coords.accuracy);
-            document.getElementById('tree_latitude').value = lat;
-            document.getElementById('tree_longitude').value = lng;
+            _fillCoords(lat, lng);
             _showAccuracy(acc, stage);
             toast('📍 GPS 成功 (±' + acc + 'm)', 'success');
         },
@@ -127,8 +148,7 @@ function doIPGeolocation() {
             if (d.latitude && d.longitude) {
                 const lat = parseFloat(parseFloat(d.latitude).toFixed(4));
                 const lng = parseFloat(parseFloat(d.longitude).toFixed(4));
-                document.getElementById('tree_latitude').value = lat;
-                document.getElementById('tree_longitude').value = lng;
+                _fillCoords(lat, lng);
                 _showAccuracy(5000, 2);
                 toast('🌐 IP 定位成功 (~' + (d.city||'') + ', ' + (d.region||'') + ')', 'success');
             } else {
@@ -202,12 +222,11 @@ function _placePickerMarker(lat, lng) {
 }
 
 /**
- * 確認地圖揀位，寫入座標欄位
+ * 確認地圖揀位，寫入座標欄位（含 HK1980）
  */
 function confirmMapPicker() {
     if (AppState._pickerLat == null || AppState._pickerLng == null) return;
-    document.getElementById('tree_latitude').value = AppState._pickerLat;
-    document.getElementById('tree_longitude').value = AppState._pickerLng;
+    _fillCoords(AppState._pickerLat, AppState._pickerLng);
     const accEl = document.getElementById('gpsAccuracy');
     accEl.textContent = '🗺️ 地圖揀位 (手動)';
     accEl.className = 'gps-accuracy map-pick';

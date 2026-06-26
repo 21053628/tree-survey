@@ -77,6 +77,7 @@ const AppState = {
     mapObj: null,
     mapMarkers: [],
     markerLookup: {},
+    _markerClusterGroup: null,
     _cachedTreeData: [],
     _hiddenHealth: {},
     _locateMarker: null,
@@ -93,6 +94,7 @@ const AppState = {
     _suggestReady: false,
     _suggestSetupDone: {},
     _popupPhotoCache: {},
+    _coordDisplayMode: 'wgs84',
 
     isAuthenticated: false,
     currentUser: null,

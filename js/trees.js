@@ -3,7 +3,7 @@
  * @module trees
  * 
  * 樹木列表（含搜尋 debounce + 記憶體快取 TTL 5 分鐘）、
- * 新增/編輯/刪除樹木、GPS 座標驗證。
+ * 新增/編輯/刪除樹木、GPS 座標驗證、雙座標系統 (WGS84 + HK1980)。
  */
 
 // ============================================================
@@ -56,6 +56,9 @@ async function _loadProjectTrees() {
     cv.innerHTML = '';
     if (!AppState.supabase || !AppState.currentProjectId) { AppState._loadingTrees = false; return; }
 
+    // 批次載入 spoofed 照片狀態快取
+    _loadSpoofStatusForProject(AppState.currentProjectId);
+
     // --- 快取檢查 ---
     const cacheKey = 'trees_' + AppState.currentProjectId + '_' + AppState.treePage + '_' + ((document.getElementById('treeSearch')?.value || '').trim());
     const cached = AppState.treesCache.get(cacheKey);
@@ -100,8 +103,8 @@ async function _loadProjectTrees() {
         }
 
         if (!r.data || r.data.length === 0) {
-            tb.innerHTML = '<tr><td colspan="10" class="empty"><span class="icon">🌱</span>暫無樹木<br><button class="btn btn-success btn-sm mt-3" onclick="showTreeModal()">➕ 新增樹木</button></td></tr>';
-            cv.innerHTML = '<div class="empty"><span class="icon">🌱</span>暫無樹木<br><button class="btn btn-success btn-sm mt-3" onclick="showTreeModal()">➕ 新增樹木</button></div>';
+            tb.innerHTML = '<tr><td colspan="10" class="empty"><span class="icon">🌱</span>暫無樹木<br><button class="btn btn-success btn-sm mt-3" data-action="create-tree">➕ 新增樹木</button></td></tr>';
+            cv.innerHTML = '<div class="empty"><span class="icon">🌱</span>暫無樹木<br><button class="btn btn-success btn-sm mt-3" data-action="create-tree">➕ 新增樹木</button></div>';
             document.getElementById('treePagination').innerHTML = '';
             AppState._loadingTrees = false;
             return;
@@ -376,7 +379,7 @@ function searchTrees() {
 // ============================================================
 
 /**
- * 重置樹木表單欄位
+ * 重置樹木表單欄位（含 HK1980 欄位與座標切換）
  * @param {boolean} isEdit - 是否為編輯模式
  */
 function _resetTreeForm(isEdit) {
@@ -386,13 +389,43 @@ function _resetTreeForm(isEdit) {
         'tree_treeIdNo', 'tree_botanicalName', 'tree_chineseName', 'tree_trunkDiameter',
         'tree_overallHeight', 'tree_crownSpread', 'tree_healthCondition', 'tree_structuralCondition',
         'tree_amenityValue', 'tree_observedDefects', 'tree_recommendation', 'tree_remarks',
-        'tree_latitude', 'tree_longitude'
+        'tree_latitude', 'tree_longitude', 'tree_easting', 'tree_northing'
     ].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     const accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
+    // 重置座標切換到 WGS84
+    if (!isEdit) {
+        AppState._coordDisplayMode = 'wgs84';
+        _updateCoordModeUI();
+    }
     _setupGPSWarning();
     AppState._photoData = [];
     AppState._photoCurrentTreeId = null;
     if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+}
+
+/**
+ * 更新座標模式 UI（顯示/隱藏 WGS84 vs HK1980 row，設定 active 按鈕）
+ */
+function _updateCoordModeUI() {
+    const isWGS = AppState._coordDisplayMode === 'wgs84';
+    const wgsRow = document.getElementById('gpsWGS84Row');
+    const hkRow = document.getElementById('gpsHK1980Row');
+    const btnWGS = document.getElementById('btnWGS84');
+    const btnHK = document.getElementById('btnHK1980');
+    if (wgsRow) wgsRow.classList.toggle('hidden', !isWGS);
+    if (hkRow) hkRow.classList.toggle('hidden', isWGS);
+    if (btnWGS) { btnWGS.classList.toggle('active', isWGS); }
+    if (btnHK) { btnHK.classList.toggle('active', !isWGS); }
+}
+
+/**
+ * 切換座標系統顯示模式
+ * @param {string} mode - 'wgs84' 或 'hk1980'
+ */
+function switchCoordMode(mode) {
+    if (mode !== 'wgs84' && mode !== 'hk1980') return;
+    AppState._coordDisplayMode = mode;
+    _updateCoordModeUI();
 }
 
 /**
@@ -448,8 +481,20 @@ function editTree(id) {
         document.getElementById('tree_remarks').value = d.remarks || '';
         document.getElementById('tree_latitude').value = (d.latitude != null) ? d.latitude : '';
         document.getElementById('tree_longitude').value = (d.longitude != null) ? d.longitude : '';
+        // HK1980 欄位：從 DB 讀取，若不存在則即時計算
+        if (d.easting != null && d.northing != null) {
+            document.getElementById('tree_easting').value = d.easting;
+            document.getElementById('tree_northing').value = d.northing;
+        } else if (d.latitude != null && d.longitude != null && typeof wgs84ToHK1980 === 'function') {
+            const hk = wgs84ToHK1980(d.latitude, d.longitude);
+            if (hk) {
+                document.getElementById('tree_easting').value = hk.easting;
+                document.getElementById('tree_northing').value = hk.northing;
+            }
+        }
         document.getElementById('treeModalTitle').textContent = '✏️ 編輯樹木';
         const accEl = document.getElementById('gpsAccuracy'); if (accEl) accEl.classList.add('hidden');
+        _updateCoordModeUI();
         _setupGPSWarning();
         AppState._photoData = [];
         AppState._photoCurrentTreeId = d.id;
@@ -462,7 +507,7 @@ function editTree(id) {
 }
 
 /**
- * 儲存樹木（新增或更新，含 GPS 驗證）
+ * 儲存樹木（新增或更新，含 GPS 驗證 + HK1980 雙座標）
  */
 async function saveTree() {
     if (!AppState.currentProjectId) { toast('⚠️ 冇選擇專案', 'error'); return; }
@@ -477,6 +522,41 @@ async function saveTree() {
     if (lngVal && isNaN(lngNum)) { toast('⚠️ Longitude 格式錯誤', 'warning'); return; }
     if (latNum !== null && (latNum < -90 || latNum > 90)) { toast('⚠️ Latitude 超出範圍', 'warning'); return; }
     if (lngNum !== null && (lngNum < -180 || lngNum > 180)) { toast('⚠️ Longitude 超出範圍', 'warning'); return; }
+
+    // 讀取 HK1980 欄位值
+    const eValRaw = document.getElementById('tree_easting').value.trim();
+    const nValRaw = document.getElementById('tree_northing').value.trim();
+    const eNum = eValRaw ? parseFloat(eValRaw) : null;
+    const nNum = nValRaw ? parseFloat(nValRaw) : null;
+
+    // 雙向座標轉換邏輯
+    let eastingVal = null;
+    let northingVal = null;
+    let finalLat = latNum;
+    let finalLng = lngNum;
+
+    if (latNum != null && lngNum != null) {
+        // 情況 1: 有 WGS84 → 計算 HK1980
+        if (typeof wgs84ToHK1980 === 'function') {
+            const hk = wgs84ToHK1980(latNum, lngNum);
+            if (hk) { eastingVal = hk.easting; northingVal = hk.northing; }
+        }
+        // 如果使用者也有手動輸入 HK1980，保留使用者輸入的值（覆蓋計算值）
+        if (eNum != null && nNum != null) { eastingVal = eNum; northingVal = nNum; }
+    } else if (eNum != null && nNum != null) {
+        // 情況 2: 只有 HK1980 冇 WGS84 → 計算 WGS84
+        eastingVal = eNum;
+        northingVal = nNum;
+        if (typeof hk1980ToWGS84 === 'function') {
+            const wgs = hk1980ToWGS84(eNum, nNum);
+            if (wgs) { finalLat = wgs.lat; finalLng = wgs.lng; }
+        }
+    }
+
+    // 再次驗證轉換後的 WGS84 座標範圍
+    if (finalLat != null && (finalLat < -90 || finalLat > 90)) { toast('⚠️ 轉換後 Latitude 超出範圍', 'warning'); return; }
+    if (finalLng != null && (finalLng < -180 || finalLng > 180)) { toast('⚠️ 轉換後 Longitude 超出範圍', 'warning'); return; }
+
     const p = {
         projectId: AppState.currentProjectId,
         treeIdNo: tid,
@@ -491,9 +571,10 @@ async function saveTree() {
         observedDefects: document.getElementById('tree_observedDefects').value.trim(),
         recommendation: document.getElementById('tree_recommendation').value,
         remarks: document.getElementById('tree_remarks').value.trim(),
-        latitude: latNum,
-        longitude: lngNum,
-        syncStatus: eid ? 'pending' : 'local',
+        latitude: finalLat,
+        longitude: finalLng,
+        easting: eastingVal,
+        northing: northingVal,
         updatedAt: new Date().toISOString(),
         user_id: AppState.currentUser?.id
     };
@@ -569,5 +650,7 @@ TreeApp.tree = {
     showTreeModal: showTreeModal,
     editTree: editTree,
     saveTree: saveTree,
-    confirmDeleteTree: confirmDeleteTree
+    confirmDeleteTree: confirmDeleteTree,
+    switchCoordMode: switchCoordMode,
+    _updateCoordModeUI: _updateCoordModeUI
 };

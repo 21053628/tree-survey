@@ -42,7 +42,9 @@ async function exportProjectTreesExcel() {
                 'Recommendation': t.recommendation || '',
                 'Remarks / Re-check': t.remarks || '',
                 'Latitude': t.latitude || '',
-                'Longitude': t.longitude || ''
+                'Longitude': t.longitude || '',
+                'Easting (HK1980)': t.easting || '',
+                'Northing (HK1980)': t.northing || ''
             };
         });
         const ws = XLSX.utils.json_to_sheet(rows);
@@ -112,7 +114,9 @@ async function exportAllProjectsExcel() {
                         'Recommendation': t.recommendation || '',
                         'Remarks / Re-check': t.remarks || '',
                         'Latitude': t.latitude || '',
-                        'Longitude': t.longitude || ''
+                        'Longitude': t.longitude || '',
+                        'Easting (HK1980)': t.easting || '',
+                        'Northing (HK1980)': t.northing || ''
                     };
                 });
                 const sn = (proj.name || 'Project').substring(0, 28).replace(/[\\/*?[\]:]/g, '');

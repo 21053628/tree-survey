@@ -224,6 +224,10 @@ document.addEventListener('click', function(e) {
             case 'download-photo': downloadCurrentPhoto(); break;
             case 'delete-photo': deleteCurrentPhoto(); break;
             case 'save-photo-caption': savePhotoCaption(); break;
+
+            // --- Coordinate System Toggle ---
+            case 'coord-mode-wgs84': switchCoordMode('wgs84'); break;
+            case 'coord-mode-hk1980': switchCoordMode('hk1980'); break;
         }
     }
 

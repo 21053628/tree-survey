@@ -56,8 +56,8 @@ async function _loadProjects() {
             return;
         }
         if (!r.data || r.data.length === 0) {
-            tb.innerHTML = '<tr><td colspan="5" class="empty"><span class="icon">📭</span>暫無專案<br><button class="btn btn-success btn-sm mt-3" onclick="showProjectModal()">➕ 新增專案</button></td></tr>';
-            cv.innerHTML = '<div class="empty"><span class="icon">📭</span>暫無專案<br><button class="btn btn-success btn-sm mt-3" onclick="showProjectModal()">➕ 新增專案</button></div>';
+            tb.innerHTML = '<tr><td colspan="5" class="empty"><span class="icon">📭</span>暫無專案<br><button class="btn btn-success btn-sm mt-3" data-action="create-project">➕ 新增專案</button></td></tr>';
+            cv.innerHTML = '<div class="empty"><span class="icon">📭</span>暫無專案<br><button class="btn btn-success btn-sm mt-3" data-action="create-project">➕ 新增專案</button></div>';
             document.getElementById('projPagination').innerHTML = '';
             document.getElementById('sProjects').textContent = '0';
             document.getElementById('sTrees').textContent = '0';

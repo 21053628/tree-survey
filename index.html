@@ -17,6 +17,8 @@
     <title>樹木調查 Supabase V22</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           id="leafletCSS">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -440,9 +442,21 @@
                     GPS Coordinates
                 </label>
                 <div class="gps-group">
-                    <div class="gps-row">
+                    <!-- WGS84 Row -->
+                    <div class="gps-row" id="gpsWGS84Row">
                         <div class="gps-field"><label>Latitude</label><input type="text" id="tree_latitude" placeholder="22.3964" inputmode="decimal"></div>
                         <div class="gps-field"><label>Longitude</label><input type="text" id="tree_longitude" placeholder="114.1095" inputmode="decimal"></div>
+                    </div>
+                    <!-- HK1980 Row (hidden by default) -->
+                    <div class="gps-row hidden" id="gpsHK1980Row">
+                        <div class="gps-field"><label>Easting (m)</label><input type="text" id="tree_easting" placeholder="836694" inputmode="decimal"></div>
+                        <div class="gps-field"><label>Northing (m)</label><input type="text" id="tree_northing" placeholder="819070" inputmode="decimal"></div>
+                    </div>
+                    <!-- Coordinate system toggle -->
+                    <div class="coord-toggle-row">
+                        <span class="coord-mode-label">座標系統：</span>
+                        <button class="btn btn-xs coord-mode-btn active" id="btnWGS84" data-action="coord-mode-wgs84">WGS84</button>
+                        <button class="btn btn-xs coord-mode-btn" id="btnHK1980" data-action="coord-mode-hk1980">HK1980</button>
                     </div>
                     <div class="gps-accuracy hidden" id="gpsAccuracy"></div>
                     <div class="gps-actions">
@@ -782,6 +796,7 @@
 <script src="js/config.js"></script>
 <script src="js/treeapp.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/coords.js"></script>
 <script src="js/state.js"></script>
 <script src="js/dom.js"></script>
 <script src="js/supabase-client.js"></script>

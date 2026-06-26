@@ -127,16 +127,16 @@ const MOBILE_BREAKPOINT_PX = 768;
 // ============================================================
 
 /** @type {number} 地圖預設縮放等級 */
-const MAP_DEFAULT_ZOOM = 15;
+const MAP_DEFAULT_ZOOM = 17;
 
 /** @type {number} 專注樹木時縮放等級 */
-const MAP_FOCUS_ZOOM = 18;
+const MAP_FOCUS_ZOOM = 19;
 
 /** @type {number} 無座標樹木時縮放等級 */
 const MAP_NO_COORDS_ZOOM = 14;
 
 /** @type {number} 單一標記時縮放等級 */
-const MAP_SINGLE_MARKER_ZOOM = 17;
+const MAP_SINGLE_MARKER_ZOOM = 19;
 
 // ============================================================
 // GPS 常數
@@ -214,8 +214,20 @@ const CDN_LIBS = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'
     ]},
+    { key: 'markercluster', urls: [
+        'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+        'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'
+    ]},
     { key: 'heic2any', urls: [
         'https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js',
         'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
+    ]},
+    { key: 'exifr', urls: [
+        'https://unpkg.com/exifr@7.1.3/dist/lite.umd.js',
+        'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js'
+    ]},
+    { key: 'proj4', urls: [
+        'https://unpkg.com/proj4@2.11.0/dist/proj4.js',
+        'https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js'
     ]}
 ];

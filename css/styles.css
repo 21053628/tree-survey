@@ -593,6 +593,37 @@ tr.table-row:hover td {
 .gps-accuracy.approx  { color:#a5b4fc; background:rgba(99,102,241,.12); }
 .gps-accuracy.map-pick{ color:#a78bfa; background:rgba(168,85,247,.12); }
 
+.coord-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+.coord-mode-label {
+    font-size: .72rem;
+    color: var(--text2);
+}
+.coord-mode-btn {
+    padding: 4px 14px;
+    font-size: .72rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all .2s;
+}
+.coord-mode-btn.active {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+}
+.coord-mode-btn:not(.active):hover {
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
 .gps-dialog { text-align:center; }
 .gps-dialog .gps-icon { font-size:3.5rem; margin-bottom:12px; }
 .gps-dialog p { color:var(--text2); font-size:.85rem; line-height:1.6; margin:6px 0; }
@@ -803,6 +834,39 @@ tr.table-row:hover td {
     background: rgba(0,0,0,.5)!important;
     color: #64748b!important;
     font-size: .6rem!important;
+}
+
+/* --- MarkerCluster Dark Overrides --- */
+.marker-cluster div {
+    background: rgba(99, 102, 241, 0.85);
+    color: #fff;
+    font-weight: 700;
+    font-family: 'Segoe UI', 'PingFang HK', system-ui, sans-serif;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+}
+.marker-cluster-small  { background: transparent !important; }
+.marker-cluster-medium { background: transparent !important; }
+.marker-cluster-large  { background: transparent !important; }
+.marker-cluster-small div  { background: rgba(16, 185, 129, 0.85); }
+.marker-cluster-medium div { background: rgba(245, 158, 11, 0.85); width: 40px; height: 40px; font-size: 0.9rem; }
+.marker-cluster-large div  { background: rgba(239, 68, 68, 0.85);   width: 50px; height: 50px; font-size: 1rem; }
+
+/* 移除 markerCluster 預設白色背景 */
+.leaflet-marker-icon.marker-cluster {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* spiderfy 展開連線顏色 */
+.leaflet-cluster-anim .leaflet-marker-icon {
+    transition: all 0.3s ease;
 }
 
 /* ============================================================

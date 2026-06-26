@@ -224,6 +224,13 @@ ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS exif_taken_at TIMESTAMPTZ;
 ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS annotations JSONB DEFAULT '[]'::jsonb;
 
 -- ============================================================
+-- 第八部分：HK1980 座標支援（雙座標系統）
+-- 新增 easting / northing 欄位，與現有 lat / lng 並存
+-- ============================================================
+ALTER TABLE trees ADD COLUMN IF NOT EXISTS easting DOUBLE PRECISION;
+ALTER TABLE trees ADD COLUMN IF NOT EXISTS northing DOUBLE PRECISION;
+
+-- ============================================================
 -- 完成！
 -- ============================================================
 -- ============================================================
@@ -237,4 +244,5 @@ ALTER TABLE tree_photos ADD COLUMN IF NOT EXISTS annotations JSONB DEFAULT '[]':
 --    UPDATE projects SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
 --    UPDATE trees SET user_id = 'your-user-uuid' WHERE user_id IS NULL;
 -- 2. 到 Supabase Storage 也要加 RLS policy（見第五部分註解）
+-- 3. 若想為現有資料批次轉換 HK1980，請使用支援 proj4 的工具
 -- ============================================================
