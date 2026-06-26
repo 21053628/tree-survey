@@ -15,6 +15,9 @@ TreeApp.dashboard = (function () {
   let _rawCache = null;
   let _rawCacheTs = 0;
 
+  /** @type {Map<string, string>} projectId → projectName */
+  let _projectNames = null;
+
   /** @type {Map<string, Chart>} 已建立的 Chart 實例 */
   const _charts = new Map();
 
@@ -69,24 +72,36 @@ TreeApp.dashboard = (function () {
       return null;
     }
 
-    var treesRes, photosRes;
+    var treesRes, photosRes, projectsRes;
     try {
       var results = await Promise.all([
         client.from('trees').select('id,healthCondition,structuralCondition,recommendation,chineseName,botanicalName,treeIdNo,projectId,created_at,latitude,longitude,trunkDiameter'),
-        client.from('tree_photos').select('is_spoofed,exif_latitude')
+        client.from('tree_photos').select('is_spoofed,exif_latitude'),
+        client.from('projects').select('id,name')
       ]);
       treesRes = results[0];
       photosRes = results[1];
+      projectsRes = results[2];
     } catch (e) {
       console.error('Dashboard: fetch error', e);
       return null;
     }
 
+    // 建立 projectId → projectName Map
+    var projMap = new Map();
+    var projData = projectsRes.data || [];
+    projData.forEach(function (p) {
+      projMap.set(p.id, p.name);
+    });
+    _projectNames = projMap;
+
     var result = {
       trees: treesRes.data || [],
       photos: photosRes.data || [],
+      projects: projMap,
       treesError: treesRes.error,
-      photosError: photosRes.error
+      photosError: photosRes.error,
+      projectsError: projectsRes.error
     };
 
     _rawCache = result;
@@ -444,20 +459,24 @@ TreeApp.dashboard = (function () {
     });
 
     if (highRisk.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">✅ 冇高危樹木，非常好！</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">✅ 冇高危樹木，非常好！</td></tr>';
       return;
     }
+
+    var projMap = _projectNames || new Map();
 
     tbody.innerHTML = highRisk.map(function (t) {
       var rowStyle = t.healthCondition === 'Dead' ? 'style="background:rgba(239,68,68,0.08);"' : '';
       var name = _escape(t.chineseName || t.botanicalName || '-');
       var tid = _escape(t.treeIdNo || '-');
+      var projName = _escape(projMap.get(t.projectId) || '-');
       var healthBadge = _healthBadgeHTML(t.healthCondition);
       var structBadge = _structBadgeHTML(t.structuralCondition);
       var recBadge = _recBadgeHTML(t.recommendation);
       return '<tr class="table-row" ' + rowStyle + '>' +
         '<td><strong>' + tid + '</strong></td>' +
         '<td>' + name + '</td>' +
+        '<td>' + projName + '</td>' +
         '<td>' + healthBadge + '</td>' +
         '<td>' + structBadge + '</td>' +
         '<td>' + recBadge + '</td>' +
