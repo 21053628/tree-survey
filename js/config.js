@@ -229,5 +229,9 @@ const CDN_LIBS = [
     { key: 'proj4', urls: [
         'https://unpkg.com/proj4@2.11.0/dist/proj4.js',
         'https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js'
+    ]},
+    { key: 'chartjs', urls: [
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
+        'https://unpkg.com/chart.js@4.4.7/dist/chart.umd.min.js'
     ]}
 ];

@@ -18,5 +18,6 @@ const TreeApp = {
     auth: {},
     gps: {},
     species: {},
-    coords: {}
+    coords: {},
+    dashboard: {}
 };

@@ -172,6 +172,7 @@ document.addEventListener('click', function(e) {
 
             // --- Navigation ---
             case 'nav-projects': goToProjects(); break;
+            case 'nav-dashboard': showDashboard(); break;
             case 'tab-list': showListView(); break;
             case 'tab-map': showMapView(); break;
 
@@ -228,6 +229,12 @@ document.addEventListener('click', function(e) {
             // --- Coordinate System Toggle ---
             case 'coord-mode-wgs84': switchCoordMode('wgs84'); break;
             case 'coord-mode-hk1980': switchCoordMode('hk1980'); break;
+
+            // --- Dashboard ---
+            case 'open-project-from-dashboard':
+                var pid = actionEl.getAttribute('data-project-id');
+                if (pid) openProject(pid, '');
+                break;
         }
     }
 

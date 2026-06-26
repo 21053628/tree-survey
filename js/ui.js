@@ -81,6 +81,7 @@ function goToProjects() {
     AppState.currentDetailTab = 'list';
     document.getElementById('view-projects').classList.remove('hidden');
     document.getElementById('view-project-detail').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('fabAddTree').classList.add('hidden');
     if (typeof destroyMap === 'function') destroyMap();
     if (typeof loadProjects === 'function') loadProjects();
@@ -164,6 +165,26 @@ async function refreshAll() {
 }
 
 // ============================================================
+// Dashboard 視圖
+// ============================================================
+
+/**
+ * 切換到 Dashboard 視圖
+ */
+function showDashboard() {
+    if (AppState.mapObj) { destroyMap(); }
+    AppState.currentView = 'dashboard';
+    AppState.currentProjectId = null;
+    document.getElementById('view-projects').classList.add('hidden');
+    document.getElementById('view-project-detail').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.remove('hidden');
+    document.getElementById('fabAddTree').classList.add('hidden');
+    if (typeof TreeApp !== 'undefined' && TreeApp.dashboard && typeof TreeApp.dashboard.init === 'function') {
+        TreeApp.dashboard.init();
+    }
+}
+
+// ============================================================
 // 系統診斷
 // ============================================================
 
@@ -215,6 +236,7 @@ TreeApp.ui = {
     openProject: openProject,
     showListView: showListView,
     showMapView: showMapView,
+    showDashboard: showDashboard,
     refreshAll: refreshAll,
     diagnosis: diagnosis
 };
