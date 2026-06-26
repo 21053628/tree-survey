@@ -17,5 +17,6 @@ const TreeApp = {
     supabase: {},
     auth: {},
     gps: {},
-    species: {}
+    species: {},
+    coords: {}
 };

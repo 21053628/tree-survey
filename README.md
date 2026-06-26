@@ -1,4 +1,4 @@
-# 🌳 樹木調查與智慧管理系統 (Tree Survey & Management System) — v22.0
+# 🌳 樹木調查與智慧管理系統 (Tree Survey & Management System) — v23.0
 
 這是一套專為建築地盤環境與專業樹木調查（Tree Survey）設計的輕量化、高安全性 **Jamstack 前後端分離網頁系統**。前端採用響應式（Mobile-First）架構設計，方便前線調查員在戶外使用流動裝置即時記錄；後端完全整合 **Supabase 雲端架構**，具備企業級的身份驗證、行級安全防禦（RLS）以及多租戶數據隔離機制。
 
@@ -60,13 +60,19 @@
 * **確認刪除對話框：** 刪除操作需經兩步驟確認（Confirm Modal），防止誤刪。
 * **Toast 通知系統：** 操作結果即時彈出通知。
 
-### 8. 📋 完整樹木調查欄位
+### 8. 🗺️ WGS84 ↔ HK1980 座標轉換系統
+* **雙向座標轉換：** 使用 `proj4` 庫精確進行 WGS84 (EPSG:4326) ↔ HK1980 (EPSG:2326) 雙向轉換，符合香港地政總署測量標準。
+* **雙重輸入模式：** 支援 WGS84 經緯度（Latitude / Longitude）與 HK1980 網格座標（Easting / Northing）兩種輸入方式。
+* **一鍵切換：** 樹木表單內建座標系統切換按鈕，調查員可即時切換顯示模式，無需手動換算。
+* **雙向自動同步：** 輸入 WGS84 座標自動計算 HK1980 網格值，反之亦然，確保兩套座標始終一致。
+
+### 9. 📋 完整樹木調查欄位
 * Tree ID、Botanical Name、Chinese Name、DBH (mm)、Height (m)、Crown Spread (m)
 * Health Condition（Good / Fair / Poor / Dead）
 * Structural Condition（Good / Fair / Poor / Hazardous）
 * Amenity Value（High / Medium / Low）
 * Observed Defects、Recommendation（Retain / Fell / Transplant / Prune / Monitor / Further Investigation）
-* Remarks、GPS Coordinates（Latitude / Longitude）
+* Remarks、GPS Coordinates（Latitude / Longitude / Easting / Northing）
 
 ---
 
@@ -79,6 +85,7 @@
 | **後端 BaaS** | Supabase (PostgreSQL + Auth + Storage + RLS) |
 | **Excel 匯出** | SheetJS (xlsx) |
 | **圖片處理** | HTML5 Canvas + exifr (EXIF 讀取) + heic2any (HEIC 轉換) |
+| **座標轉換** | proj4 (WGS84 ↔ HK1980 EPSG:2326 雙向投影轉換) |
 | **CDN** | unpkg / jsDelivr (所有資源固定版本號) |
 | **安全** | CSP 標頭、Supabase RLS、多租戶 `auth.uid()` 隔離、EXIF GPS 防偽比對 |
 
@@ -96,7 +103,8 @@
 | `trees.js` | 樹木 CRUD、表單管理、表格/卡片渲染、Spoof 紅旗顯示 |
 | `species.js` | 物種建議下拉選單、雙欄聯動 |
 | `map.js` | Leaflet 地圖渲染、Marker 分色、圖層切換、地圖搜尋 |
-| `gps.js` | GPS 三級定位、地圖揀位 Modal、圖層切換 |
+| `gps.js` | GPS 三級定位、地圖揀位 Modal、座標系統切換 |
+| `coords.js` | WGS84 ↔ HK1980 座標轉換（proj4）、雙向自動同步、座標系統切換 |
 | `photos.js` | 照片上傳/壓縮/HEIC轉換、EXIF GPS 防偽比對、標註工具箱、照片檢視器 |
 | `excel.js` | Excel 報表匯出 |
 | `ui.js` | Toast 通知、Modal 控制、視圖切換、連線狀態 |
@@ -165,6 +173,6 @@
 
 ## 📋 版本紀錄
 
-詳細版本變更請參閱 [`CHANGELOG.md`](./CHANGELOG.md)。目前最新穩定版為 **v22.0**（2026-06-24）。
+詳細版本變更請參閱 [`CHANGELOG.md`](./CHANGELOG.md)。目前最新穩定版為 **v23.0**（2026-06-26）。
 
 > © 2020–2026 Terry Cheung (60524440). All rights reserved.
