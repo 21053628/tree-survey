@@ -160,20 +160,24 @@ function buildTreePopupContent(t) {
 
 /**
  * 渲染地圖（從快取或 DB 載入）
+ * @returns {Promise<void>}
  */
-function renderMap() {
+async function renderMap() {
     if (!leafletReady()) { toast('⚠️ 地圖 library 未載入', 'warning'); return; }
     if (AppState._cachedTreeData.length > 0) {
         _doRenderMap(AppState._cachedTreeData);
     } else {
-        _doRenderMapFromDB();
+        await _doRenderMapFromDB();
     }
 }
 
 /**
  * 從 DB 載入樹木資料並渲染地圖（使用 fetchAllPages 統一工具）
+ * @param {number} [retryCount=0] - 內部重試計數器
+ * @returns {Promise<void>}
  */
-async function _doRenderMapFromDB() {
+async function _doRenderMapFromDB(retryCount) {
+    retryCount = retryCount || 0;
     if (!AppState.supabase || !AppState.currentProjectId) return;
     try {
         const allTrees = await fetchAllPages(
@@ -185,8 +189,15 @@ async function _doRenderMapFromDB() {
         AppState._cachedTreeData = allTrees;
         _doRenderMap(allTrees);
     } catch(e) {
-        toast('❌ Map load error: ' + e.message, 'error');
-        document.getElementById('mapStatus').textContent = '❌ 載入失敗';
+        console.warn('Map load attempt ' + (retryCount + 1) + ' failed:', e.message);
+        if (retryCount < 2) {
+            // 自動重試最多 3 次（含第一次），每次間隔遞增
+            await new Promise(function(r) { setTimeout(r, (retryCount + 1) * 1000); });
+            return _doRenderMapFromDB(retryCount + 1);
+        }
+        toast('❌ 地圖載入失敗: ' + e.message, 'error');
+        var ms = document.getElementById('mapStatus');
+        if (ms) ms.textContent = '❌ 載入失敗，請重試';
     }
 }
 
@@ -198,6 +209,8 @@ function _doRenderMap(trees) {
     const container = document.getElementById('mapContainer');
     if (!container) return;
     destroyMap();
+    // 保留樹木資料快取，避免後續 renderMap() 重複查詢 DB
+    AppState._cachedTreeData = trees;
     AppState.mapObj = L.map('mapContainer', { zoomControl: true, attributionControl: true }).setView(HK_CENTER, MAP_DEFAULT_ZOOM);
     const layerCfg = LAYER_CONFIG[AppState._currentLayer] || LAYER_CONFIG['dark'];
     AppState.mapObj._currentTileLayer = L.tileLayer(layerCfg.url, layerCfg.options).addTo(AppState.mapObj);
@@ -362,7 +375,7 @@ function _doRenderMap(trees) {
  * 從列表點擊「📍」時，切換到地圖並聚焦指定樹木
  * @param {string} treeId - 樹的 UUID
  */
-function focusTreeOnMap(treeId) {
+async function focusTreeOnMap(treeId) {
     AppState.currentDetailTab = 'map';
     document.getElementById('view-project-list').classList.add('hidden');
     document.getElementById('view-project-map').classList.remove('hidden');
@@ -375,7 +388,8 @@ function focusTreeOnMap(treeId) {
     if (AppState.mapObj) { destroyMap(); }
 
     AppState._pendingFocusTreeId = treeId;
-    setTimeout(function() { renderMap(); }, DELAY_RENDER_MAP);
+    await renderMap();
+    // renderMap 完成後 _doRenderMap 已設定 _focusResolved=true，直接進入後續處理
     _focusTreeOnMapNow(treeId, 0);
 }
 
