@@ -21,7 +21,6 @@ function destroyMap() {
     if (AppState.mapObj) { AppState.mapObj.remove(); AppState.mapObj = null; }
     AppState.mapMarkers = [];
     AppState.markerLookup = {};
-    AppState._cachedTreeData = [];
     AppState._hiddenHealth = {};
     if (AppState._locateMarker) { AppState._locateMarker = null; }
     document.querySelectorAll('.filter-toggle').forEach(function(b) {
@@ -178,26 +177,73 @@ async function renderMap() {
  */
 async function _doRenderMapFromDB(retryCount) {
     retryCount = retryCount || 0;
-    if (!AppState.supabase || !AppState.currentProjectId) return;
+    var ms = document.getElementById('mapStatus');
+
+    // 檢查 Supabase 連線狀態
+    if (!AppState.supabase) {
+        if (ms) ms.textContent = '❌ 未連接資料庫，請重新整理頁面';
+        console.error('_doRenderMapFromDB: AppState.supabase is null');
+        return;
+    }
+
+    // 檢查是否已選擇專案
+    if (!AppState.currentProjectId) {
+        if (ms) ms.textContent = '⚠️ 請先選擇一個專案';
+        console.warn('_doRenderMapFromDB: No currentProjectId');
+        return;
+    }
+
     try {
-        const allTrees = await fetchAllPages(
-            AppState.supabase.from('trees')
-                .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude,easting,northing')
-                .eq('projectId', AppState.currentProjectId)
-                .order('treeIdNo', { ascending: true })
-        );
+        // 資料查詢階段（有獨立的重試機制）
+        var allTrees = null;
+        try {
+            allTrees = await fetchAllPages(
+                AppState.supabase.from('trees')
+                    .select('id,treeIdNo,botanicalName,chineseName,healthCondition,structuralCondition,recommendation,trunkDiameter,overallHeight,crownSpread,latitude,longitude,easting,northing')
+                    .eq('projectId', AppState.currentProjectId)
+                    .order('treeIdNo', { ascending: true })
+            );
+        } catch(dataErr) {
+            console.warn('Map data fetch attempt ' + (retryCount + 1) + ' failed:', dataErr.message);
+            if (retryCount < 2) {
+                if (ms) ms.textContent = '⏳ 載入中...（重試 ' + (retryCount + 1) + '/3）';
+                await new Promise(function(r) { setTimeout(r, (retryCount + 1) * 1000); });
+                return _doRenderMapFromDB(retryCount + 1);
+            }
+            if (ms) ms.textContent = '❌ 資料載入失敗：' + (dataErr.message || '網絡錯誤');
+            toast('❌ 無法從伺服器載入樹木資料：' + (dataErr.message || '請檢查網絡連線'), 'error');
+            return;
+        }
+
+        if (!allTrees || allTrees.length === 0) {
+            AppState._cachedTreeData = [];
+            if (ms) ms.textContent = '📭 此專案尚無樹木資料';
+            // 仍然嘗試渲染地圖（空白地圖）
+            _doRenderMap([]);
+            return;
+        }
+
+        // 將資料存入快取，即使後續渲染失敗也保留
         AppState._cachedTreeData = allTrees;
-        _doRenderMap(allTrees);
+
+        // 地圖渲染階段（獨立 try-catch，不影響已取得的資料）
+        try {
+            _doRenderMap(allTrees);
+        } catch(renderErr) {
+            console.error('Map render error:', renderErr.message);
+            if (ms) ms.textContent = '❌ 地圖渲染失敗：' + (renderErr.message || '未知錯誤');
+            toast('❌ 地圖渲染失敗：' + (renderErr.message || '請檢查 Leaflet 函式庫是否正確載入'), 'error');
+        }
     } catch(e) {
-        console.warn('Map load attempt ' + (retryCount + 1) + ' failed:', e.message);
+        // 最外層 catch：捕捉非預期錯誤
+        console.error('_doRenderMapFromDB unexpected error:', e.message);
         if (retryCount < 2) {
-            // 自動重試最多 3 次（含第一次），每次間隔遞增
+            if (ms) ms.textContent = '⏳ 載入中...（重試 ' + (retryCount + 1) + '/3）';
             await new Promise(function(r) { setTimeout(r, (retryCount + 1) * 1000); });
             return _doRenderMapFromDB(retryCount + 1);
         }
-        toast('❌ 地圖載入失敗: ' + e.message, 'error');
-        var ms = document.getElementById('mapStatus');
         if (ms) ms.textContent = '❌ 載入失敗，請重試';
+        toast('❌ 地圖載入失敗：' + (e.message || '未知錯誤'), 'error');
     }
 }
 
@@ -243,25 +289,34 @@ function _doRenderMap(trees) {
         return;
     }
 
+    // 檢查 MarkerClusterGroup 是否可用；若 CDN 未載入則降級為普通 marker
+    var useCluster = typeof L.markerClusterGroup === 'function';
+    if (!useCluster) {
+        console.warn('L.markerClusterGroup not available — falling back to plain markers');
+        toast('⚠️ MarkerCluster 未載入，標記將不會自動合併', 'warning');
+    }
+
     // 建立 MarkerClusterGroup（防止密集標記重疊）
-    AppState._markerClusterGroup = L.markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        disableClusteringAtZoom: MAP_FOCUS_ZOOM,
-        iconCreateFunction: function(cluster) {
-            var count = cluster.getChildCount();
-            var size = 'small';
-            if (count >= 10) size = 'medium';
-            if (count >= 100) size = 'large';
-            return L.divIcon({
-                html: '<div><span>' + count + '</span></div>',
-                className: 'marker-cluster marker-cluster-' + size,
-                iconSize: L.point(40, 40)
-            });
-        }
-    });
+    if (useCluster) {
+        AppState._markerClusterGroup = L.markerClusterGroup({
+            chunkedLoading: true,
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            disableClusteringAtZoom: MAP_FOCUS_ZOOM,
+            iconCreateFunction: function(cluster) {
+                var count = cluster.getChildCount();
+                var size = 'small';
+                if (count >= 10) size = 'medium';
+                if (count >= 100) size = 'large';
+                return L.divIcon({
+                    html: '<div><span>' + count + '</span></div>',
+                    className: 'marker-cluster marker-cluster-' + size,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+    }
 
     const bounds = [];
     withCoords.forEach(function(t) {
@@ -282,13 +337,19 @@ function _doRenderMap(trees) {
             permanent: true, direction: 'top', className: 'tree-label', offset: [0, -8]
         });
         marker.bindPopup(buildTreePopupContent(t));
-        AppState._markerClusterGroup.addLayer(marker);
+        if (useCluster) {
+            AppState._markerClusterGroup.addLayer(marker);
+        } else {
+            marker.addTo(AppState.mapObj);
+        }
         AppState.mapMarkers.push(marker);
         if (t.id) AppState.markerLookup[t.id] = marker;
         bounds.push([lat, lng]);
     });
 
-    AppState.mapObj.addLayer(AppState._markerClusterGroup);
+    if (useCluster) {
+        AppState.mapObj.addLayer(AppState._markerClusterGroup);
+    }
 
     // Popup 打開時載入照片 strip + 綁定按鈕事件（事件委派，取代 inline onclick）
     AppState.mapObj.on('popupopen', function(e) {
@@ -455,7 +516,9 @@ function searchMapTrees() {
  * 根據搜尋框 + 健康狀態濾鏡更新地圖標記顯示
  */
 function applyMapFilters() {
-    if (!AppState.mapObj || !AppState._markerClusterGroup) return;
+    if (!AppState.mapObj) return;
+    // 若 _markerClusterGroup 為 null（fallback 模式），直接操作地圖，否則透過 cluster group
+    var useCluster = !!AppState._markerClusterGroup;
     const query = (document.getElementById('mapSearchInput')?.value || '').trim().toLowerCase();
     let visibleCount = 0;
     AppState.mapMarkers.forEach(function(m) {
@@ -466,8 +529,20 @@ function applyMapFilters() {
         const hiddenByHealth = AppState._hiddenHealth[health] || false;
         const matchesSearch = !query || tid.indexOf(query) >= 0 || bname.indexOf(query) >= 0 || cname.indexOf(query) >= 0;
         const visible = !hiddenByHealth && matchesSearch;
-        if (visible) { AppState._markerClusterGroup.addLayer(m); visibleCount++; }
-        else { AppState._markerClusterGroup.removeLayer(m); }
+        if (visible) {
+            if (useCluster) {
+                AppState._markerClusterGroup.addLayer(m);
+            } else {
+                AppState.mapObj.addLayer(m);
+            }
+            visibleCount++;
+        } else {
+            if (useCluster) {
+                AppState._markerClusterGroup.removeLayer(m);
+            } else {
+                AppState.mapObj.removeLayer(m);
+            }
+        }
     });
     document.getElementById('mapStatus').textContent = '顯示 ' + visibleCount + ' / ' + AppState.mapMarkers.length + ' 棵';
 }

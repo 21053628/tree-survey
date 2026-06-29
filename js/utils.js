@@ -221,8 +221,9 @@ async function fetchAllPages(queryBuilder, pageSize) {
         while (true) {
             const r = await queryBuilder.range(from, from + pageSize - 1);
             if (r.error) {
-                console.warn('fetchAllPages error:', r.error.message);
-                break;
+                // 將 Supabase 錯誤向上傳播，讓呼叫端能區分網路/權限/資料問題
+                console.error('fetchAllPages error:', r.error.message, '(code: ' + (r.error.code || 'none') + ')');
+                throw new Error(r.error.message || '資料庫查詢失敗');
             }
             if (!r.data || r.data.length === 0) break;
             allData = allData.concat(r.data);
@@ -230,7 +231,9 @@ async function fetchAllPages(queryBuilder, pageSize) {
             from += pageSize;
         }
     } catch(e) {
+        // 重新拋出異常，讓呼叫端能捕獲並分類處理
         console.error('fetchAllPages exception:', e.message);
+        throw e;
     }
     return allData;
 }
